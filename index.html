@@ -780,8 +780,8 @@
                     </span>
                     <span class="relative">
                         系
-                        <!-- 悬挂弹簧电话 -->
-                        <div class="absolute top-full left-1/2 -translate-x-1/2 flex flex-col items-center">
+                        <!-- 悬挂弹簧电话（z-20 提权，防止被下方按钮组容器遮挡导致下半不可点） -->
+                        <div class="absolute top-full left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
                             <div class="w-0.5 h-12 border-l-2 border-dashed border-emerald-400 animate-pulse"></div>
                             <button onclick="copyContact('15942394114', '联系电话', event)" class="w-12 h-12 rounded-full bg-emerald-500 text-black flex items-center justify-center shadow-[0_0_25px_rgba(34,197,94,0.6)] hover:scale-110 transition-transform active:scale-95" title="点击复制电话">
                                 <i class="fa-solid fa-phone text-lg"></i>
@@ -798,21 +798,21 @@
                 </h2>
             </div>
 
-            <!-- 快捷联系操作按钮组 -->
-            <div class="flex flex-wrap justify-center gap-4 pt-12 reveal-node">
-                <button onclick="copyContact('2700219829@qq.com', '电子邮箱', event)" class="px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-emerald-400 transition-all">
+            <!-- 快捷联系操作按钮组（容器 pointer-events-none 放行被悬挂电话覆盖的空白区域，子元素单独恢复可点） -->
+            <div class="flex flex-wrap justify-center gap-4 pt-12 reveal-node pointer-events-none">
+                <button onclick="copyContact('2700219829@qq.com', '电子邮箱', event)" class="pointer-events-auto px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-emerald-400 transition-all">
                     <i class="fa-solid fa-envelope text-emerald-400 text-lg"></i>
                     <span>2700219829@qq.com</span>
                 </button>
-                <button onclick="copyContact('15942394114', '联系电话', event)" class="px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-emerald-400 transition-all">
+                <button onclick="copyContact('15942394114', '联系电话', event)" class="pointer-events-auto px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-emerald-400 transition-all">
                     <i class="fa-solid fa-phone text-emerald-400 text-lg"></i>
                     <span>15942394114</span>
                 </button>
-                <button onclick="copyContact('2700219829', 'QQ 号码', event)" class="px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-blue-400 transition-all">
+                <button onclick="copyContact('2700219829', 'QQ 号码', event)" class="pointer-events-auto px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-blue-400 transition-all">
                     <i class="fa-brands fa-qq text-blue-400 text-lg"></i>
                     <span>QQ: 2700219829</span>
                 </button>
-                <a href="https://github.com/fklnk" target="_blank" rel="noreferrer" class="px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-white transition-all">
+                <a href="https://github.com/fklnk" target="_blank" rel="noreferrer" class="pointer-events-auto px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-white transition-all">
                     <i class="fa-brands fa-github text-lg"></i>
                     <span>GitHub @fklnk</span>
                 </a>
@@ -1574,7 +1574,8 @@
                 document.removeEventListener('pointerdown', startOnGesture);
                 document.removeEventListener('touchstart', startOnGesture);
                 const player = getBgm();
-                if (!player.paused) return;               // 自动播放已成功，不打断
+                // 自动播放真正出了声（currentTime > 0）才不打断；被拦截/悬挂时直接用手势覆盖播放
+                if (!player.paused && player.currentTime > 0) return;
                 if (isBgmPausedByUser) return;            // 用户手动暂停过，不强推
                 if (e.target.closest('#bgm-btn')) return; // 点的是音乐按钮本身，交给 toggleBgm，避免开了又被关
                 playBgm();
