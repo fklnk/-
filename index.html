@@ -1099,23 +1099,26 @@
             revealElements.forEach(el => observer.observe(el));
         }
 
-        // 7. 视觉至上 · 全局目光追踪计算
+        // 7. 视觉至上 · 全局目光追踪计算（桌面鼠标 / 移动端手指触摸）
         const eyeContainer = document.getElementById('eye-container');
         const eyePupil = document.getElementById('eye-pupil');
-        window.addEventListener('mousemove', (e) => {
-            if (eyeContainer && eyePupil) {
-                const rect = eyeContainer.getBoundingClientRect();
-                const eyeX = rect.left + rect.width / 2;
-                const eyeY = rect.top + rect.height / 2;
-                const dx = e.clientX - eyeX;
-                const dy = e.clientY - eyeY;
-                const angle = Math.atan2(dy, dx);
-                const distance = Math.min(26, Math.hypot(dx, dy) / 10);
-                const px = Math.cos(angle) * distance;
-                const py = Math.sin(angle) * distance;
-                eyePupil.style.transform = `translate(${px}px, ${py}px)`;
-            }
-        });
+        function movePupil(clientX, clientY) {
+            if (!eyeContainer || !eyePupil) return;
+            const rect = eyeContainer.getBoundingClientRect();
+            const eyeX = rect.left + rect.width / 2;
+            const eyeY = rect.top + rect.height / 2;
+            const dx = clientX - eyeX;
+            const dy = clientY - eyeY;
+            const angle = Math.atan2(dy, dx);
+            const distance = Math.min(26, Math.hypot(dx, dy) / 10);
+            const px = Math.cos(angle) * distance;
+            const py = Math.sin(angle) * distance;
+            eyePupil.style.transform = `translate(${px}px, ${py}px)`;
+        }
+        window.addEventListener('mousemove', (e) => movePupil(e.clientX, e.clientY));
+        // 移动端：手指点到哪，瞳孔就看到哪（passive 不阻断页面滚动）
+        window.addEventListener('touchstart', (e) => movePupil(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+        window.addEventListener('touchmove', (e) => movePupil(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
 
         // 8. AI 卡片触碰白光渐变覆盖动效
         function triggerAiCardEffect(card) {
@@ -1563,17 +1566,20 @@
             playBgm();
         }
 
-        // 页面加载后立即尝试自动播放（浏览器拦截时降级为首次交互续播）
+        // 页面加载后立即尝试自动播放（浏览器拦截时降级为首次触屏/点击续播）
         window.addEventListener('load', () => {
             getBgm().play().then(() => {
                 isBgmPlaying = true;
                 setBgmUi(true);
             }).catch(() => {
+                showToast('🎵 点击页面任意位置开启背景音乐');
                 const startOnGesture = () => {
                     document.removeEventListener('pointerdown', startOnGesture);
+                    document.removeEventListener('touchstart', startOnGesture);
                     if (!isBgmPlaying && !isBgmPausedByUser) playBgm();
                 };
                 document.addEventListener('pointerdown', startOnGesture);
+                document.addEventListener('touchstart', startOnGesture);
             });
         });
 
