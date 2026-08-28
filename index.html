@@ -1568,18 +1568,20 @@
             playBgm();
         }
 
-        // 页面加载后立即尝试自动播放（浏览器拦截时降级为首次触屏/点击续播）
+        // 页面加载后尝试自动播放；同时预挂"首次交互自动续播"兜底（单次触发即销毁，不会叠音）
         window.addEventListener('load', () => {
-            getBgm().play().then(() => setBgmUi(true)).catch(() => {
-                showToast('🎵 点击页面任意位置开启背景音乐');
-                const startOnGesture = () => {
-                    document.removeEventListener('pointerdown', startOnGesture);
-                    document.removeEventListener('touchstart', startOnGesture);
-                    if (!isBgmPausedByUser) playBgm(); // 重复触发也会被"覆盖"逻辑合并为一路
-                };
-                document.addEventListener('pointerdown', startOnGesture);
-                document.addEventListener('touchstart', startOnGesture);
-            });
+            const startOnGesture = (e) => {
+                document.removeEventListener('pointerdown', startOnGesture);
+                document.removeEventListener('touchstart', startOnGesture);
+                const player = getBgm();
+                if (!player.paused) return;               // 自动播放已成功，不打断
+                if (isBgmPausedByUser) return;            // 用户手动暂停过，不强推
+                if (e.target.closest('#bgm-btn')) return; // 点的是音乐按钮本身，交给 toggleBgm，避免开了又被关
+                playBgm();
+            };
+            document.addEventListener('pointerdown', startOnGesture);
+            document.addEventListener('touchstart', startOnGesture);
+            getBgm().play().then(() => setBgmUi(true)).catch(() => showToast('🎵 点击页面任意位置开启背景音乐'));
         });
 
         // 15.5 顶部导航响应式切换（桌面横排 / 移动端横滑，JS 显式控制确保二选一）
