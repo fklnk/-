@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>胡坤 · HU KUN | 动态叙事与全栈作品集</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#030508',
+                            surface: '#080d14',
+                            card: '#0f1724',
+                            border: '#1e293b',
+                            emerald: '#10b981',
+                            cyan: '#06b6d4',
+                            accent: '#22c55e',
+                            purple: '#a855f7'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['Fira Code', 'Courier New', 'Consolas', 'monospace'],
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome 6 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 基础暗黑质感与重置 */
+        body {
+            background-color: #030508;
+            color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 玻璃拟态卡片 */
+        .glass-card {
+            background: rgba(15, 23, 36, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-card:hover {
+            border-color: rgba(34, 197, 94, 0.45);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(34, 197, 94, 0.15);
+        }
+
+        /* 视差渐入动画 */
+        .reveal-node {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .js-ready .reveal-node.reveal-pending {
+            opacity: 0;
+            transform: translateY(28px);
+        }
+        .js-ready .reveal-node.reveal-active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 打字机光标呼吸闪烁 */
+        .typewriter-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 1.15em;
+            vertical-align: middle;
+            background-color: #22c55e;
+            margin-left: 4px;
+            animation: cursorBlink 0.9s infinite;
+            box-shadow: 0 0 8px #22c55e;
+        }
+        @keyframes cursorBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* AI 卡片触控白光渐变反转动效 */
+        .ai-sweep-card {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            background: rgba(15, 23, 36, 0.85);
+        }
+        .ai-sweep-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #ffffff 50%, transparent);
+            transform: translateX(-50%);
+            transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+            opacity: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .ai-sweep-card.active-sweep {
+            background-color: #ffffff !important;
+            box-shadow: 0 0 45px rgba(255, 255, 255, 0.75) !important;
+            transform: translateY(-6px) scale(1.02);
+        }
+        .ai-sweep-card.active-sweep * {
+            color: #030508 !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 7px; height: 7px; }
+        ::-webkit-scrollbar-track { background: #030508; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #22c55e; }
+    </style>
+</head>
+<body class="selection:bg-emerald-500 selection:text-black">
+
+    <!-- 顶部全局滚动渐变进度条 -->
+    <div id="scroll-progress" class="fixed top-0 left-0 w-0 h-[3.5px] bg-gradient-to-r from-cyan-400 via-emerald-400 to-green-400 z-50 transition-all duration-75 shadow-[0_0_12px_#34d399]"></div>
+
+    <!-- 全局粒子特效 Canvas (点击任意复制或打招呼时触发绚丽礼花) -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[60] w-full h-full"></canvas>
+
+    <!-- 浮动 Toast 提示框 -->
+    <div id="toast-box" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[70] px-6 py-3 rounded-full bg-black/95 border border-emerald-500/50 text-emerald-300 text-xs sm:text-sm font-bold shadow-[0_10px_30px_rgba(0,0,0,0.8)] backdrop-blur-md flex items-center gap-2.5 opacity-0 pointer-events-none transition-all duration-300 translate-y-3">
+        <i class="fa-solid fa-sparkles text-emerald-400"></i>
+        <span id="toast-text">通知内容</span>
+    </div>
+
+    <!-- 顶部导航栏 -->
+    <header class="fixed top-0 left-0 w-full z-40 bg-[#030508]/85 backdrop-blur-xl border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <a href="#about" class="flex items-center gap-3 group shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-400 text-black font-black flex items-center justify-center font-mono text-sm group-hover:scale-105 transition-transform shadow-[0_0_15px_rgba(16,185,129,0.35)]">
+                    HK
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-bold text-sm tracking-tight text-white whitespace-nowrap group-hover:text-emerald-400 transition-colors">
+                        胡坤 · HU KUN
+                    </span>
+                    <span class="hidden xl:block text-[10px] font-mono text-neutral-400 whitespace-nowrap">2026 CS 准大一 · fklnk.dev</span>
+                </div>
+            </a>
+
+            <!-- 桌面端菜单项（≥1024px 显示，由 JS syncNavDisplay 控制显隐） -->
+            <nav id="nav-desktop" style="display:none" class="flex items-center gap-4 xl:gap-5 text-xs font-mono text-neutral-400 font-semibold tracking-wider">
+                <a href="#about" class="whitespace-nowrap hover:text-emerald-400 transition-colors">01//关于我</a>
+                <a href="#profile" class="whitespace-nowrap hover:text-emerald-400 transition-colors">02//技能档案</a>
+                <a href="#certs" class="whitespace-nowrap hover:text-emerald-400 transition-colors">03//证书集</a>
+                <a href="#projects" class="whitespace-nowrap hover:text-emerald-400 transition-colors">04//重点项目</a>
+                <a href="#visual" class="whitespace-nowrap hover:text-emerald-400 transition-colors">05//视觉追焦</a>
+                <a href="#ai-practice" class="whitespace-nowrap hover:text-emerald-400 transition-colors">06//AI实战</a>
+                <a href="#blueprint-lab" class="whitespace-nowrap hover:text-emerald-400 transition-colors">07//蓝图工坊</a>
+                <a href="#contact" class="whitespace-nowrap hover:text-emerald-400 transition-colors">08//联系方式</a>
+            </nav>
+
+            <div class="flex items-center gap-2.5">
+                <button onclick="openCertWallModal()" class="hidden sm:flex px-3 py-1.5 xl:px-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400 text-emerald-300 font-mono text-xs font-bold items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-award"></i>
+                    <span class="hidden xl:inline">证书墙 (18)</span>
+                </button>
+                <button id="bgm-btn" onclick="toggleBgm()" class="px-3 py-1.5 xl:px-3.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500 hover:text-black transition-all text-xs flex items-center gap-1.5 font-bold shadow-sm" title="播放/暂停背景音乐">
+                    <i id="bgm-icon" class="fa-solid fa-music"></i>
+                    <span id="bgm-text" class="hidden xl:inline">背景音乐</span>
+                </button>
+                <button onclick="openCopilotModal()" class="px-3 py-1.5 xl:px-3.5 rounded-full bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all active:scale-95 flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                    <i class="fa-solid fa-robot"></i>
+                    <span class="hidden xl:inline">对话分身</span>
+                </button>
+                <!-- 汉堡菜单已由横向滚动数字导航替代 -->
+                <button onclick="toggleMobileMenu()" class="hidden p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 移动端横向滚动数字导航（<1024px 显示，可左右滑动，由 JS syncNavDisplay 控制显隐） -->
+        <nav id="nav-mobile" class="flex items-center gap-4 overflow-x-auto px-4 py-2.5 border-t border-white/5 text-[11px] font-mono text-neutral-400 font-semibold tracking-wider [&::-webkit-scrollbar]:hidden" style="display:none; scrollbar-width: none;">
+            <a href="#about" class="whitespace-nowrap hover:text-emerald-400 transition-colors">01//关于我</a>
+            <a href="#profile" class="whitespace-nowrap hover:text-emerald-400 transition-colors">02//技能档案</a>
+            <a href="#certs" class="whitespace-nowrap hover:text-emerald-400 transition-colors">03//证书集</a>
+            <a href="#projects" class="whitespace-nowrap hover:text-emerald-400 transition-colors">04//重点项目</a>
+            <a href="#visual" class="whitespace-nowrap hover:text-emerald-400 transition-colors">05//视觉追焦</a>
+            <a href="#ai-practice" class="whitespace-nowrap hover:text-emerald-400 transition-colors">06//AI实战</a>
+            <a href="#blueprint-lab" class="whitespace-nowrap hover:text-emerald-400 transition-colors">07//蓝图工坊</a>
+            <a href="#contact" class="whitespace-nowrap hover:text-emerald-400 transition-colors">08//联系方式</a>
+        </nav>
+
+        <!-- 移动端折叠菜单 -->
+        <div id="mobile-menu" class="hidden lg:hidden px-6 py-4 bg-[#030508]/95 border-b border-white/10 flex flex-col gap-3 text-xs font-mono">
+            <a href="#about" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">01 // 关于我</a>
+            <a href="#profile" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">02 // 技能与档案</a>
+            <a href="#certs" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">03 // 官方证书集</a>
+            <a href="#projects" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">04 // 重点项目实战</a>
+            <a href="#visual" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">05 // 视觉目光追踪</a>
+            <a href="#ai-practice" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">06 // AI 编程实战</a>
+            <a href="#blueprint-lab" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">07 // AI 蓝图工坊</a>
+            <a href="#contact" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">08 // 联系交流</a>
+        </div>
+    </header>
+
+    <!-- ===================== 01 HERO 首屏动态叙事区 ===================== -->
+    <section id="about" class="min-h-screen pt-28 pb-16 flex items-center justify-center relative px-6 overflow-hidden">
+        <!-- 高清高对比度深邃视频背景：绝不发淡发虚 -->
+        <div class="absolute inset-0 z-0">
+            <video
+                class="w-full h-full object-cover opacity-80 filter brightness-90 contrast-125 saturate-110 pointer-events-none scale-105"
+                autoPlay
+                loop
+                muted
+                playsInline
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_063509_7d167302-4fd4-480b-8260-18ab572333d4.mp4"
+            ></video>
+            <!-- 双重暗色渐变遮罩：确保大号文字极致清晰、视频光影立体深沉 -->
+            <div class="absolute inset-0 bg-gradient-to-t from-[#030508] via-[#030508]/65 to-black/75"></div>
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,#030508_90%)]"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto w-full grid lg:grid-cols-12 gap-12 items-center relative z-10">
+            <!-- 左侧核心叙事与打字机 -->
+            <div class="lg:col-span-7 space-y-6">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium reveal-node shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>🎓 电子科技大学成都学院 · 计算机科学与技术 (2026 级新生)</span>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="text-emerald-400 font-mono text-xs tracking-[0.25em] font-bold uppercase reveal-node">
+                        // 计算机科学与技术 · 准大一学生
+                    </div>
+                    <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-tight reveal-node drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)]">
+                        AI 原生<br />
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-200 to-emerald-400">
+                            全栈开发者 · 胡坤
+                        </span>
+                    </h1>
+                    
+                    <!-- 动态打字机叙事栏 -->
+                    <div class="h-8 flex items-center text-base sm:text-xl font-mono text-cyan-300">
+                        <span class="text-emerald-400 mr-2 font-black">&gt;</span>
+                        <span id="typewriter-text" class="font-bold"></span>
+                        <span class="typewriter-cursor"></span>
+                    </div>
+                </div>
+
+                <p class="text-neutral-300 text-sm sm:text-base leading-relaxed max-w-xl reveal-node">
+                    以 AI 原生思维为研发引擎，深入探索大模型工具链、Python / Web 全栈编程与 Canvas 图形交互。拥有 <strong class="text-emerald-400 font-bold">18 项大模型与开发官方权威认证</strong>（阿里云·达摩院 × 14、科大讯飞 × 4），崇尚“先完成，再完美”的极客实践哲学。
+                </p>
+
+                <!-- 行动按钮组 -->
+                <div class="flex flex-wrap items-center gap-3 pt-2 reveal-node">
+                    <button onclick="openCertWallModal()" class="px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm transition-all shadow-[0_0_20px_rgba(16,185,129,0.35)] flex items-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-award"></i>
+                        <span>检阅 18 项官方证书相册</span>
+                    </button>
+
+                    <a href="#projects" class="px-5 py-3.5 rounded-xl glass-card text-neutral-200 hover:text-white transition-all text-sm flex items-center gap-2 hover:border-emerald-400">
+                        <i class="fa-solid fa-code text-emerald-400"></i>
+                        <span>探索精选重点项目</span>
+                    </a>
+
+                    <button onclick="copyContact('2700219829@qq.com', '电子邮箱', event)" class="px-4 py-3.5 rounded-xl glass-card text-neutral-300 hover:text-white transition-all text-sm flex items-center gap-2" title="点击复制邮箱">
+                        <i class="fa-solid fa-envelope text-emerald-400"></i>
+                    </button>
+
+                    <a href="https://github.com/fklnk" target="_blank" rel="noreferrer" class="p-3.5 rounded-xl glass-card text-neutral-300 hover:text-white transition-all" title="GitHub 个人主页">
+                        <i class="fa-brands fa-github text-lg"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 右侧极客开发工作台 -->
+            <div class="lg:col-span-5 reveal-node">
+                <div class="p-7 rounded-3xl glass-card border border-white/10 relative overflow-hidden shadow-2xl space-y-5">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                        </div>
+                        <span class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-3 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                            <i class="fa-solid fa-sparkles"></i> 大模型深度赋能
+                        </span>
+                    </div>
+
+                    <div class="py-5 text-center space-y-3">
+                        <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl shadow-inner">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white tracking-wide">胡坤 · AI 原生开发工作台</h3>
+                            <p class="text-xs text-neutral-400 mt-1">智能对话 · 原型蓝图工坊 · 18 项权威资质</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-2 border-t border-white/10 font-mono text-xs">
+                        <div class="flex justify-between items-center text-neutral-300 py-1">
+                            <span class="text-neutral-500">// 01 入学规划</span>
+                            <span class="text-emerald-400 font-bold">2026 级就绪</span>
+                        </div>
+                        <div class="flex justify-between items-center text-neutral-300 py-1">
+                            <span class="text-neutral-500">// 02 官方技能认证</span>
+                            <span class="text-white font-bold">18 项证书已就绪</span>
+                        </div>
+                        <div class="flex justify-between items-center text-neutral-300 py-1">
+                            <span class="text-neutral-500">// 03 核心研发框架</span>
+                            <span class="text-cyan-400 font-bold">Vibe Coding MVP</span>
+                        </div>
+                    </div>
+
+                    <button onclick="openCopilotModal()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400 text-xs font-bold text-emerald-400 flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-comments"></i>
+                        <span>与 AI 智能数字分身实时对话</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ===================== 02 教育背景 · 专业技能 · 兴趣爱好 ===================== -->
+    <section id="profile" class="py-24 px-6 border-t border-white/5 bg-[#030508]">
+        <div class="max-w-7xl mx-auto space-y-12">
+            <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
+                <div>
+                    <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 02 技能与档案</span>
+                    <h2 class="text-3xl sm:text-4xl font-black text-white tracking-tight mt-2">
+                        教育背景 · 专业技能 · 兴趣爱好
+                    </h2>
+                </div>
+                <p class="text-xs text-neutral-400 max-w-sm">
+                    先完成，再完美 —— 用工程化方式持续学习与沉淀。
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- 教育背景 -->
+                <div class="p-8 rounded-3xl glass-card space-y-5 reveal-node">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white">教育背景</h3>
+                    </div>
+                    <div>
+                        <p class="text-base font-bold text-white">电子科技大学成都学院</p>
+                        <p class="text-xs text-neutral-400 mt-1 font-mono">计算机科学与技术 · 本科 · 2026 级</p>
+                    </div>
+                    <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                        2026 年秋季入学，主修程序设计、数据结构与算法等核心课程；入学前已通过自学完成大模型应用开发与 Web 全栈的项目化实践。
+                    </p>
+                </div>
+
+                <!-- 专业技能 -->
+                <div class="p-8 rounded-3xl glass-card space-y-5 reveal-node">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-lg">
+                            <i class="fa-solid fa-code"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white">专业技能</h3>
+                    </div>
+                    <ul class="space-y-3 text-xs sm:text-sm text-neutral-300">
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>Python 与 Web 前端（HTML / CSS / JavaScript）开发基础</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>大模型工具链应用与 Prompt 提示词工程</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>原生 Canvas 图形渲染与交互动效开发</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>Git / GitHub 版本协同与 AI 辅助编程工作流</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>Office 办公套件熟练，擅长 PPT 演示文稿设计与排版</span></li>
+                    </ul>
+                </div>
+
+                <!-- 兴趣爱好 -->
+                <div class="p-8 rounded-3xl glass-card space-y-5 reveal-node">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-lg">
+                            <i class="fa-solid fa-heart"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white">兴趣爱好</h3>
+                    </div>
+                    <div class="flex flex-wrap gap-2.5">
+                        <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300"><i class="fa-solid fa-gamepad text-purple-400 mr-1.5"></i>游戏与电竞</span>
+                        <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300"><i class="fa-solid fa-book text-purple-400 mr-1.5"></i>阅读</span>
+                        <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300"><i class="fa-solid fa-microchip text-purple-400 mr-1.5"></i>数码科技</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                        热衷游戏与电竞，在体验中理解交互设计与玩家心理；喜欢阅读与关注数码科技资讯，保持对新技术的敏感度，并把兴趣转化为编程创作的灵感来源。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== 02 权威官方证书集 (18项证书墙) ===================== -->
+    <section id="certs" class="py-24 px-6 border-t border-white/5 bg-[#05080c]">
+        <div class="max-w-7xl mx-auto space-y-12">
+            <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
+                <div>
+                    <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 03 官方证书集</span>
+                    <h2 class="text-3xl sm:text-4xl font-black text-white tracking-tight mt-2">
+                        18 项权威官方技能认证相册
+                    </h2>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="openCertWallModal()" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs font-bold tracking-wider transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-2">
+                        <i class="fa-solid fa-images"></i>
+                        <span>打开 18 项全部证书墙 ➔</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 核心数据看板 -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 reveal-node">
+                <div class="glass-card p-5 rounded-2xl space-y-1">
+                    <div class="text-2xl sm:text-3xl font-black font-mono text-emerald-400">18 项</div>
+                    <div class="text-xs text-neutral-400">累计官方认证总数</div>
+                </div>
+                <div class="glass-card p-5 rounded-2xl space-y-1">
+                    <div class="text-2xl sm:text-3xl font-black font-mono text-orange-400">14 项</div>
+                    <div class="text-xs text-neutral-400">阿里云 / 达摩院认证</div>
+                </div>
+                <div class="glass-card p-5 rounded-2xl space-y-1">
+                    <div class="text-2xl sm:text-3xl font-black font-mono text-cyan-400">4 项</div>
+                    <div class="text-xs text-neutral-400">科大讯飞 AI 大学堂</div>
+                </div>
+                <div class="glass-card p-5 rounded-2xl space-y-1">
+                    <div class="text-2xl sm:text-3xl font-black font-mono text-purple-400">100%</div>
+                    <div class="text-xs text-neutral-400">真实编码可溯源验真</div>
+                </div>
+            </div>
+
+            <!-- 精选代表性证书卡片 (点击进入 Lightbox) -->
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 reveal-node">
+                <!-- 证书卡片 1 -->
+                <div onclick="openLightbox(0)" class="glass-card p-5 rounded-2xl space-y-3 cursor-pointer group hover:border-emerald-400">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">王牌高级</span>
+                        <span class="text-[11px] font-mono text-neutral-400">2026-07-19</span>
+                    </div>
+                    <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
+                        人工智能训练师证书（高级）
+                    </h4>
+                    <p class="text-xs text-neutral-400 font-mono">发证机构: 阿里云 / 达摩院</p>
+                    <div class="text-[11px] font-mono text-emerald-400 pt-2 border-t border-white/5 flex items-center justify-between">
+                        <span>AIT260719154627000116</span>
+                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                    </div>
+                </div>
+
+                <!-- 证书卡片 2 -->
+                <div onclick="openLightbox(3)" class="glass-card p-5 rounded-2xl space-y-3 cursor-pointer group hover:border-emerald-400">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">企业级落地</span>
+                        <span class="text-[11px] font-mono text-neutral-400">至 2028-07-19</span>
+                    </div>
+                    <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
+                        Spring AI 应用开发（入门）
+                    </h4>
+                    <p class="text-xs text-neutral-400 font-mono">发证机构: 阿里云 Clouder</p>
+                    <div class="text-[11px] font-mono text-emerald-400 pt-2 border-t border-white/5 flex items-center justify-between">
+                        <span>CLDM09260702736841</span>
+                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                    </div>
+                </div>
+
+                <!-- 证书卡片 3 -->
+                <div onclick="openLightbox(14)" class="glass-card p-5 rounded-2xl space-y-3 cursor-pointer group hover:border-emerald-400">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">智能体编排</span>
+                        <span class="text-[11px] font-mono text-neutral-400">至 2028-08-09</span>
+                    </div>
+                    <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
+                        智能体工程师认证
+                    </h4>
+                    <p class="text-xs text-neutral-400 font-mono">发证机构: 科大讯飞 AI 大学堂</p>
+                    <div class="text-[11px] font-mono text-emerald-400 pt-2 border-t border-white/5 flex items-center justify-between">
+                        <span>XFAGENT973061</span>
+                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                    </div>
+                </div>
+
+                <!-- 证书卡片 4 -->
+                <div onclick="openLightbox(5)" class="glass-card p-5 rounded-2xl space-y-3 cursor-pointer group hover:border-emerald-400">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">云原生数据库</span>
+                        <span class="text-[11px] font-mono text-neutral-400">至 2028-07-19</span>
+                    </div>
+                    <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
+                        PolarDB 分布式版 V2.0 认证
+                    </h4>
+                    <p class="text-xs text-neutral-400 font-mono">发证机构: 阿里云计算</p>
+                    <div class="text-[11px] font-mono text-emerald-400 pt-2 border-t border-white/5 flex items-center justify-between">
+                        <span>CLDB09260702736777</span>
+                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== 03 重点项目实战 ===================== -->
+    <section id="projects" class="py-24 px-6 border-t border-white/5 bg-[#030508]">
+        <div class="max-w-7xl mx-auto space-y-12">
+            <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
+                <div>
+                    <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 04 重点项目实战</span>
+                    <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight mt-2">
+                        重点精选项目作品
+                    </h2>
+                </div>
+                <p class="text-xs text-neutral-400 max-w-sm">
+                    手写原生架构拆分与工程落地，点击任意卡片查阅详细架构解析。
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- 项目 1 -->
+                <div onclick="openProjectModal(0)" class="p-8 rounded-3xl glass-card space-y-5 cursor-pointer reveal-node group hover:border-emerald-400 transition-all">
+                    <div class="flex items-center justify-between">
+                        <span class="text-4xl font-black font-mono text-emerald-400">01</span>
+                        <span class="text-xs font-mono text-neutral-400">2026.03</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-emerald-400 transition-colors">校园坦克大战</h3>
+                        <p class="text-xs text-neutral-400 mt-1">原生 Canvas 15 模块解耦引擎</p>
+                    </div>
+                    <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                        基于原生 HTML5 Canvas 独立开发的网页对战游戏，无任何第三方依赖。包含 360° 瞄准、敌方 AI 寻路、物理跳弹与瓦砾破坏。
+                    </p>
+                    <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs font-mono text-emerald-400">
+                        <span>查看架构解构与模块 ➔</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </div>
+                </div>
+
+                <!-- 项目 2 -->
+                <div onclick="openProjectModal(1)" class="p-8 rounded-3xl glass-card space-y-5 cursor-pointer reveal-node group hover:border-cyan-400 transition-all">
+                    <div class="flex items-center justify-between">
+                        <span class="text-4xl font-black font-mono text-cyan-400">02</span>
+                        <span class="text-xs font-mono text-neutral-400">2026.02</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-cyan-400 transition-colors">沉浸式个人主页</h3>
+                        <p class="text-xs text-neutral-400 mt-1">空间叙事主页 · 动态 WebGL 与全景交互</p>
+                    </div>
+                    <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                        整合 18 项官方资质 Bento 矩阵排版、全屏视差背景、深色流光着色器与彩带粒子交互的现代极客主页。
+                    </p>
+                    <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs font-mono text-cyan-400">
+                        <span>查看架构解构与模块 ➔</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </div>
+                </div>
+
+                <!-- 项目 3 -->
+                <div onclick="openProjectModal(2)" class="p-8 rounded-3xl glass-card space-y-5 cursor-pointer reveal-node group hover:border-purple-400 transition-all">
+                    <div class="flex items-center justify-between">
+                        <span class="text-4xl font-black font-mono text-purple-400">03</span>
+                        <span class="text-xs font-mono text-neutral-400">2025.12</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-purple-400 transition-colors">自动化智能体工作流</h3>
+                        <p class="text-xs text-neutral-400 mt-1">每日自动化抓取与多智能体报告</p>
+                    </div>
+                    <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                        基于 Python 与主流大模型 API 搭建的日常技术资讯自动化抓取与提炼系统，定时汇总全球 AI、前端与开源动态。
+                    </p>
+                    <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs font-mono text-purple-400">
+                        <span>查看架构解构与模块 ➔</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== 04 视觉至上 · 全局目光追踪 ===================== -->
+    <section id="visual" class="py-24 px-6 border-t border-white/5 bg-[#05080c] relative overflow-hidden">
+        <div class="max-w-7xl mx-auto text-center space-y-10">
+            <div class="space-y-3 reveal-node">
+                <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 05 视觉目光追踪</span>
+                <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase">
+                    视 觉 至 上 · 全 局 目 光 追 焦
+                </h2>
+                <p class="text-xs sm:text-sm text-neutral-400 max-w-lg mx-auto">
+                    移动您的鼠标或触控屏幕，中央眼珠与瞳孔将基于三角几何角与视差算法实时注视光标。
+                </p>
+            </div>
+
+            <!-- 动态眼球容器 -->
+            <div class="flex justify-center reveal-node">
+                <div id="eye-container" class="w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-white relative flex items-center justify-center shadow-[0_0_80px_rgba(34,197,94,0.3)] border-4 border-emerald-400 overflow-hidden">
+                    <!-- 蜘蛛与血丝装饰 -->
+                    <div class="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_transparent_40%,_red_90%)]"></div>
+                    
+                    <!-- 随鼠标移动的瞳孔 -->
+                    <div id="eye-pupil" class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-[#05080c] relative flex items-center justify-center shadow-2xl transition-transform duration-75 ease-out">
+                        <!-- 虹膜光圈 -->
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-500 flex items-center justify-center">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black relative">
+                                <div class="w-2.5 h-2.5 rounded-full bg-white absolute top-1 left-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== 05 AI 编程实战 (触碰白光渐变反转) ===================== -->
+    <section id="ai-practice" class="py-24 px-6 border-t border-white/5 bg-[#030508]">
+        <div class="max-w-7xl mx-auto space-y-12">
+            <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
+                <div>
+                    <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 06 AI 编程实战</span>
+                    <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight mt-2">
+                        AI 编程实战与作品集
+                    </h2>
+                </div>
+                <p class="text-xs text-neutral-400">
+                    触碰或点击任意板块，从中间扩散白色线性渐变并反转字色。
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- 实战卡片 1 -->
+                <div onclick="triggerAiCardEffect(this)" class="p-8 rounded-3xl ai-sweep-card glass-card border border-white/10 cursor-pointer space-y-4 reveal-node group">
+                    <div class="text-4xl font-black font-mono text-emerald-400">01</div>
+                    <h3 class="text-xl font-extrabold text-white tracking-tight">动态视觉网站</h3>
+                    <p class="text-xs sm:text-sm text-neutral-400 leading-relaxed">
+                        Gemini + 动态视觉交互体系实战落地。利用原生 Canvas 粒子系统、高对比度暗黑极客美学构建沉浸式叙事主页。
+                    </p>
+                    <div class="text-[11px] font-mono text-emerald-400 pt-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span>2026.03 落地作品</span>
+                    </div>
+                </div>
+
+                <!-- 实战卡片 2 -->
+                <div onclick="triggerAiCardEffect(this)" class="p-8 rounded-3xl ai-sweep-card glass-card border border-white/10 cursor-pointer space-y-4 reveal-node group">
+                    <div class="text-4xl font-black font-mono text-cyan-400">02</div>
+                    <h3 class="text-xl font-extrabold text-white tracking-tight">自动化工作流</h3>
+                    <p class="text-xs sm:text-sm text-neutral-400 leading-relaxed">
+                        自动化工作流 —— 每日自动化抓取信息，构建闭环生产力工具链与 GitHub 协同自动化机制，提高 10x 学习效率。
+                    </p>
+                    <div class="text-[11px] font-mono text-cyan-400 pt-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span>2025.09 落地作品</span>
+                    </div>
+                </div>
+
+                <!-- 实战卡片 3 -->
+                <div onclick="triggerAiCardEffect(this)" class="p-8 rounded-3xl ai-sweep-card glass-card border border-white/10 cursor-pointer space-y-4 reveal-node group">
+                    <div class="text-4xl font-black font-mono text-purple-400">03</div>
+                    <h3 class="text-xl font-extrabold text-white tracking-tight">专属 AI 智能体</h3>
+                    <p class="text-xs sm:text-sm text-neutral-400 leading-relaxed">
+                        系统提示词工程 + 固定上下文编排 = 专属智能体助手，涵盖专业课复习指导与自动化代码重构审核。
+                    </p>
+                    <div class="text-[11px] font-mono text-purple-400 pt-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span>2025.12 落地作品</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== 06 智能实验室 · 原型蓝图工坊 (嵌入 WebGL 丝绸紫流光着色器背景) ===================== -->
+    <section id="blueprint-lab" class="py-24 px-6 border-t border-white/5 relative overflow-hidden bg-[#05080c]">
+        <!-- WebGL 丝绸紫流光光丝着色器背景 -->
+        <canvas id="lightpillar-canvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-45"></canvas>
+        <div class="absolute inset-0 bg-gradient-to-t from-[#030508] via-transparent to-[#030508] pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto space-y-8 relative z-10">
+            <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
+                <div>
+                    <span class="text-xs font-mono text-purple-400 font-bold uppercase tracking-widest">// 07 AI 蓝图工坊</span>
+                    <h2 class="text-3xl sm:text-4xl font-black text-white tracking-tight mt-2">
+                        智能实验室 · 原型蓝图工坊
+                    </h2>
+                </div>
+                <p class="text-xs text-neutral-400 max-w-md">
+                    基于 Gemini 3 Flash 实时架构规划能力，输入任何设想即时生成技术选型、MVP 路线与核心 Prompt。
+                </p>
+            </div>
+
+            <div class="p-8 sm:p-10 rounded-3xl glass-card border border-purple-500/30 space-y-6 reveal-node">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
+                            <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-white">AI Vibe Coding 原型蓝图工坊</h3>
+                            <p class="text-xs text-neutral-400">将创意点子一键转化为可落地的 MVP 架构设计方案</p>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-mono text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/30 self-start sm:self-auto">
+                        本地蓝图引擎 · 离线可用
+                    </span>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input
+                            type="text"
+                            id="blueprint-input"
+                            value="校园二手教材智能估价与匹配 Agent"
+                            placeholder="输入您的项目灵感，例如：构建一个基于 RAG 的企业级知识库系统..."
+                            class="flex-1 bg-black/70 border border-white/20 rounded-2xl px-5 py-3.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-purple-400 transition-colors font-mono"
+                            onkeydown="if(event.key==='Enter') handleGenerateBlueprint()"
+                        />
+                        <button
+                            id="blueprint-btn"
+                            onclick="handleGenerateBlueprint()"
+                            class="px-7 py-3.5 rounded-2xl bg-purple-500 hover:bg-purple-400 text-black font-bold text-sm flex items-center justify-center gap-2 transition-all flex-shrink-0 shadow-lg shadow-purple-500/20 active:scale-95"
+                        >
+                            <i class="fa-solid fa-fire"></i>
+                            <span>生成技术蓝图</span>
+                        </button>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                        <span class="text-xs font-mono text-neutral-500 flex items-center gap-1">
+                            <i class="fa-solid fa-lightbulb text-yellow-400"></i> 快捷预设:
+                        </span>
+                        <button onclick="setBlueprintPrompt('Canvas 网页物理弹球对战')" class="text-xs font-mono text-neutral-300 hover:text-purple-300 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 transition-colors">+ Canvas 网页弹球</button>
+                        <button onclick="setBlueprintPrompt('考研高数错题智能自愈 Agent')" class="text-xs font-mono text-neutral-300 hover:text-purple-300 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 transition-colors">+ 考研高数自愈 Agent</button>
+                        <button onclick="setBlueprintPrompt('GitHub 自动化周报生成助手')" class="text-xs font-mono text-neutral-300 hover:text-purple-300 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 transition-colors">+ GitHub 自动化周报</button>
+                        <button onclick="setBlueprintPrompt('基于 RAG 的专业课程答疑知识库')" class="text-xs font-mono text-neutral-300 hover:text-purple-300 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 transition-colors">+ RAG 课程答疑库</button>
+                    </div>
+                </div>
+
+                <!-- 生成结果展示容器 -->
+                <div id="blueprint-result" class="hidden p-6 rounded-2xl bg-black/85 border border-purple-500/40 text-xs sm:text-sm text-neutral-200 leading-relaxed whitespace-pre-wrap font-mono space-y-3 shadow-inner max-h-96 overflow-y-auto">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-2">
+                        <span class="text-purple-400 font-bold font-mono flex items-center gap-1.5">
+                            <i class="fa-solid fa-terminal"></i> // 蓝图输出
+                        </span>
+                        <button onclick="copyBlueprintOutput()" class="text-xs text-neutral-400 hover:text-white flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+                            <i class="fa-solid fa-copy"></i> 复制蓝图
+                        </button>
+                    </div>
+                    <div id="blueprint-text"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ===================== 07 CONTACT ME 创意联系方式 (Jiejoe 风格) ===================== -->
+    <section id="contact" class="py-28 px-6 bg-black border-t border-white/5 relative overflow-hidden">
+        <div class="max-w-7xl mx-auto text-center space-y-16">
+            <div class="relative inline-block select-none reveal-node">
+                <!-- CONTACT ME 大字体与交互挂载 -->
+                <h2 class="text-5xl sm:text-7xl md:text-9xl font-black tracking-tighter text-white inline-flex items-center">
+                    <span class="relative">
+                        联
+                        <!-- 倾斜信封图标 -->
+                        <button onclick="copyContact('2700219829@qq.com', '电子邮箱', event)" class="absolute -top-7 left-0 w-8 h-8 rounded-lg bg-white/10 hover:bg-white text-emerald-400 hover:text-black flex items-center justify-center transition-transform hover:scale-125 border border-white/20" title="点击复制邮箱">
+                            <i class="fa-solid fa-envelope text-sm"></i>
+                        </button>
+                    </span>
+                    <span class="relative">
+                        系
+                        <!-- 悬挂弹簧电话 -->
+                        <div class="absolute top-full left-1/2 -translate-x-1/2 flex flex-col items-center">
+                            <div class="w-0.5 h-12 border-l-2 border-dashed border-emerald-400 animate-pulse"></div>
+                            <button onclick="copyContact('15942394114', '联系电话', event)" class="w-12 h-12 rounded-full bg-emerald-500 text-black flex items-center justify-center shadow-[0_0_25px_rgba(34,197,94,0.6)] hover:scale-110 transition-transform active:scale-95" title="点击复制电话">
+                                <i class="fa-solid fa-phone text-lg"></i>
+                            </button>
+                        </div>
+                    </span>
+                    <span class="relative">
+                        我
+                        <!-- 企鹅 QQ 图标 -->
+                        <button onclick="copyContact('2700219829', 'QQ 号码', event)" class="absolute -top-6 right-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shadow-md hover:scale-125 transition-transform" title="点击复制 QQ">
+                            QQ
+                        </button>
+                    </span>
+                </h2>
+            </div>
+
+            <!-- 快捷联系操作按钮组 -->
+            <div class="flex flex-wrap justify-center gap-4 pt-12 reveal-node">
+                <button onclick="copyContact('2700219829@qq.com', '电子邮箱', event)" class="px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-emerald-400 transition-all">
+                    <i class="fa-solid fa-envelope text-emerald-400 text-lg"></i>
+                    <span>2700219829@qq.com</span>
+                </button>
+                <button onclick="copyContact('15942394114', '联系电话', event)" class="px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-emerald-400 transition-all">
+                    <i class="fa-solid fa-phone text-emerald-400 text-lg"></i>
+                    <span>15942394114</span>
+                </button>
+                <button onclick="copyContact('2700219829', 'QQ 号码', event)" class="px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-blue-400 transition-all">
+                    <i class="fa-brands fa-qq text-blue-400 text-lg"></i>
+                    <span>QQ: 2700219829</span>
+                </button>
+                <a href="https://github.com/fklnk" target="_blank" rel="noreferrer" class="px-6 py-4 rounded-2xl glass-card text-white font-mono text-sm flex items-center gap-3 hover:border-white transition-all">
+                    <i class="fa-brands fa-github text-lg"></i>
+                    <span>GitHub @fklnk</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="py-8 border-t border-white/5 text-center text-xs font-mono text-neutral-500 bg-[#030508]">
+        <p>© 2026 胡坤（HU KUN）· 电子科技大学成都学院 · 计算机科学与技术</p>
+    </footer>
+
+    <!-- ===================== 弹窗 1: 全部 18 项官方证书墙画廊 ===================== -->
+    <div id="cert-wall-modal" class="fixed inset-0 z-[80] bg-black/90 backdrop-blur-2xl hidden items-center justify-center p-4 sm:p-8">
+        <div class="bg-[#080d14] border border-white/15 rounded-3xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl relative overflow-hidden">
+            <!-- 头部 -->
+            <div class="p-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+                <div>
+                    <h3 class="text-xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                        <span>全部 18 项官方权威技能与算法认证相册</span>
+                    </h3>
+                    <p class="text-xs font-mono text-neutral-400 mt-1">涵盖阿里云达摩院高级/初级、Spring AI、PolarDB 分布式数据库及讯飞四大工程师</p>
+                </div>
+                <button onclick="closeCertWallModal()" class="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- 分类筛选 Tab -->
+            <div class="px-6 py-3 border-b border-white/5 flex gap-2 overflow-x-auto flex-shrink-0 bg-black/40">
+                <button onclick="filterCerts('all')" id="tab-all" class="px-4 py-1.5 rounded-full bg-emerald-500 text-black font-mono text-xs font-bold transition-all">全部 (18 张)</button>
+                <button onclick="filterCerts('ali')" id="tab-ali" class="px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 font-mono text-xs font-bold transition-all">阿里云 / 达摩院 (14 张)</button>
+                <button onclick="filterCerts('flytek')" id="tab-flytek" class="px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 font-mono text-xs font-bold transition-all">科大讯飞 (4 张)</button>
+            </div>
+
+            <!-- 证书卡片网格 -->
+            <div id="cert-grid" class="p-6 overflow-y-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
+                <!-- JS 动态注入 18 项真实证书卡片 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== 弹窗 2: 单张证书高清 Lightbox 查看器 ===================== -->
+    <div id="lightbox" class="fixed inset-0 z-[90] bg-black/95 backdrop-blur-2xl hidden items-center justify-center p-4 sm:p-8">
+        <div class="bg-[#0b1017] border border-emerald-500/40 rounded-3xl max-w-2xl w-full p-8 relative shadow-[0_0_50px_rgba(34,197,94,0.3)] space-y-6">
+            <button onclick="closeLightbox()" class="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="space-y-2">
+                <span id="lb-tag" class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-xs border border-emerald-500/30">官方认证</span>
+                <h3 id="lb-title" class="text-xl font-black text-white mt-2">证书名称</h3>
+                <p id="lb-org" class="text-xs text-neutral-400 font-mono">发证机构: 阿里云</p>
+            </div>
+
+            <img id="lb-img" src="" alt="证书原图" class="w-full max-h-64 object-contain rounded-xl border border-white/10 bg-black/60" loading="lazy">
+
+            <div class="p-4 rounded-xl bg-black/60 border border-white/10 space-y-2 text-xs font-mono">
+                <div class="text-neutral-400">官方认证验真编号:</div>
+                <div id="lb-code" class="text-emerald-400 font-bold select-all text-sm">--</div>
+            </div>
+
+            <p id="lb-desc" class="text-xs sm:text-sm text-neutral-300 leading-relaxed"></p>
+
+            <div class="flex gap-3 pt-2">
+                <button id="lb-copy-btn" onclick="copyLbCode(event)" class="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-bold text-xs font-mono tracking-wider hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-copy"></i>
+                    <span>一键复制证书防伪编码</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== 弹窗 3: 重点项目详情与架构拆解 ===================== -->
+    <div id="project-modal" class="fixed inset-0 z-[85] bg-black/90 backdrop-blur-2xl hidden items-center justify-center p-4 sm:p-8">
+        <div class="bg-[#0b1017] border border-emerald-500/40 rounded-3xl max-w-2xl w-full p-8 relative shadow-2xl space-y-6">
+            <button onclick="closeProjectModal()" class="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="space-y-2">
+                <span id="proj-badge" class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-xs border border-emerald-500/30">PROJECT 01</span>
+                <h3 id="proj-title" class="text-2xl font-black text-white mt-2">项目名称</h3>
+                <p id="proj-subtitle" class="text-xs text-neutral-400 font-mono">副标题描述</p>
+            </div>
+
+            <p id="proj-desc" class="text-xs sm:text-sm text-neutral-300 leading-relaxed"></p>
+
+            <div class="space-y-2">
+                <div class="text-xs font-mono text-emerald-400 font-bold">核心架构与技术亮点：</div>
+                <ul id="proj-highlights" class="space-y-1.5 text-xs text-neutral-300 font-mono">
+                    <!-- 动态注入亮点 -->
+                </ul>
+            </div>
+
+            <div class="pt-4">
+                <a id="proj-link" href="https://github.com/fklnk" target="_blank" rel="noreferrer" class="w-full py-3 rounded-xl bg-emerald-500 text-black font-bold text-xs font-mono tracking-wider hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                    <i class="fa-brands fa-github text-sm"></i>
+                    <span>访问开源工程代码 ➔</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== 抽屉 4: AI 智能分身 Copilot ===================== -->
+    <div id="copilot-drawer" class="fixed inset-y-0 right-0 w-full sm:w-[440px] bg-[#0c100e] border-l border-white/10 z-[80] transform translate-x-full transition-transform duration-300 flex flex-col shadow-2xl backdrop-blur-2xl">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between bg-black/40">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
+                    <i class="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white">胡坤 · AI 智能分身</h3>
+                    <span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> 在线 (Gemini 3 Flash)
+                    </span>
+                </div>
+            </div>
+            <button onclick="closeCopilotModal()" class="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- 聊天流 -->
+        <div id="copilot-chat-box" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="flex gap-2.5 justify-start">
+                <div class="w-7 h-7 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 text-xs mt-0.5">HK</div>
+                <div class="p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed max-w-[85%] bg-white/5 border border-white/10 text-neutral-200">
+                    你好！我是胡坤的 AI 智能数字分身。我熟悉他的 18 项官方技能认证、全栈独立作品（如校园坦克大战 15 模块引擎）以及 2026 级电子科技大学成都学院的专业规划。请问你想了解他的哪一方面？
+                </div>
+            </div>
+        </div>
+
+        <!-- 快捷问答预设 -->
+        <div class="px-4 py-2 border-t border-white/5 flex gap-1.5 overflow-x-auto">
+            <button onclick="sendCopilotPreset('18项官方认证有哪些？')" class="text-[11px] text-neutral-300 hover:text-emerald-300 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-full whitespace-nowrap border border-white/10">18项认证有哪些？</button>
+            <button onclick="sendCopilotPreset('大学和专业是什么？')" class="text-[11px] text-neutral-300 hover:text-emerald-300 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-full whitespace-nowrap border border-white/10">大学和专业是什么？</button>
+            <button onclick="sendCopilotPreset('坦克大战项目有什么亮点？')" class="text-[11px] text-neutral-300 hover:text-emerald-300 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-full whitespace-nowrap border border-white/10">坦克大战有什么亮点？</button>
+        </div>
+
+        <!-- 消息输入栏 -->
+        <div class="p-4 border-t border-white/10 bg-black/40">
+            <form onsubmit="handleCopilotSubmit(event)" class="flex gap-2">
+                <input
+                    type="text"
+                    id="copilot-input"
+                    placeholder="向胡坤的 AI 分身提问..."
+                    class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-400 font-mono"
+                />
+                <button type="submit" class="p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 transition-colors">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== 核心 JavaScript 动效与交互引擎 ===================== -->
+    <script>
+        // 1. 渐进增强标记
+        document.documentElement.classList.add('js-ready');
+
+        // 2. 18 项真实权威证书数据库
+        const CERTIFICATES = [
+            { id: '01', title: '人工智能训练师证书（初级）', org: '阿里云计算有限公司 / 达摩院', date: '2026-07-19', code: 'AIT260719102250000110', cat: 'ali', tag: '官方初级', desc: '系统性掌握人工智能基础数据处理逻辑、业务知识库构建与模型基础调优。' },
+            { id: '02', title: '人工智能训练师证书（高级）', org: '阿里云计算有限公司 / 达摩院', date: '2026-07-19', code: 'AIT260719154627000116', cat: 'ali', tag: '王牌高级', desc: '掌握大模型算法微调、高质量数据集清洗标注、复杂 Prompt 调优与行业级 Agent 构建实战。' },
+            { id: '03', title: '大模型 Clouder 认证：基于通义灵码实现高效 AI 编码实践', org: '阿里云全球培训中心', date: '至 2028-08-08', code: 'CLDM07260802753341', cat: 'ali', tag: '高效编码', desc: '掌握利用通义灵码开展大模型驱动的代码重构、单元测试自动化生成与复杂工程协同。' },
+            { id: '04', title: '大模型 Clouder 认证：Spring AI 应用开发（入门）', org: '阿里云计算有限公司', date: '至 2028-07-19', code: 'CLDM09260702736841', cat: 'ali', tag: '企业级落地', desc: '具备使用 Spring 生态快速接入主流大模型、构建企业级 Java+AI 应用的全链路工程能力。' },
+            { id: '05', title: '人工智能 Clouder 认证：VISION 人工智能设计（进阶）', org: '阿里云全球培训中心', date: '至 2028-07-19', code: 'CLDM08260702736776', cat: 'ali', tag: '视觉进阶', desc: '深入掌握计算机视觉算法在创意设计、图像增强与工业检测场景下的应用实践。' },
+            { id: '06', title: '云原生数据库 Clouder 认证：PolarDB 分布式版 V2.0', org: '阿里云计算有限公司', date: '至 2028-07-19', code: 'CLDB09260702736777', cat: 'ali', tag: '云数据库', desc: '掌握云原生分布式关系型数据库架构原理、高可用读写分离与高并发集群部署运维。' },
+            { id: '07', title: '云原生数据库 Clouder 认证：PolarDB 数据库管理进阶', org: '阿里云计算有限公司', date: '至 2028-07-19', code: 'CLDB09260702736777', cat: 'ali', tag: '数据库运维', desc: '精通分布式数据库多副本一致性协议、弹性扩缩容与云原生存储引擎管理。' },
+            { id: '08', title: '基于 PAI ArtLab 的 AIGC 设计基础', org: '阿里云计算有限公司', date: '至 2028-07-18', code: 'CLDM05260702735586', cat: 'ali', tag: 'AIGC设计', desc: '熟练运用阿里云 PAI ArtLab 开源工具链进行文生图模型调优与个性化视觉资产创作。' },
+            { id: '09', title: '基于 PAI ArtLab 的 AIGC 视觉资产工程', org: '阿里云计算有限公司', date: '至 2028-07-18', code: 'CLDM05260702735586', cat: 'ali', tag: '视觉工程', desc: '掌握扩散模型底层采样策略、LoRA 微调与高分辨率画质重构工作流。' },
+            { id: '10', title: '大模型 Clouder 认证：RAG 应用构建及优化 (一)', org: '阿里云全球培训中心', date: '至 2028-07-19', code: 'CLDM04260702736846', cat: 'ali', tag: 'RAG架构', desc: '精通知识库文档分块切分、多路召回策略与向量增强检索系统的低延迟调优。' },
+            { id: '11', title: '大模型 Clouder 认证：RAG 应用构建及优化 (二)', org: '阿里云全球培训中心', date: '至 2028-07-19', code: 'CLDM04260702736842', cat: 'ali', tag: 'RAG进阶', desc: '掌握语义重排 (Reranker) 算法调优、混合召回与大模型防幻觉知识核验。' },
+            { id: '12', title: '大模型 Clouder 认证：基于百炼平台构建智能体应用 (基础)', org: '阿里云计算有限公司', date: '至 2028-07-19', code: 'CLDM02260702736843', cat: 'ali', tag: '智能体构建', desc: '熟练在百炼平台编排自定义插件、知识库检索与任务型多智能体系统。' },
+            { id: '13', title: '大模型 Clouder 认证：基于百炼平台构建智能体应用 (进阶)', org: '阿里云计算有限公司', date: '至 2028-07-19', code: 'CLDM02260702736843', cat: 'ali', tag: '智能体进阶', desc: '精通智能体 Function Calling 工具链调用、长期记忆持久化与多轮任务流转。' },
+            { id: '14', title: '大模型 Clouder 认证：基于百炼平台构建智能体应用 (高阶)', org: '阿里云计算有限公司', date: '至 2028-07-19', code: 'CLDM02260702736847', cat: 'ali', tag: '百炼高阶', desc: '掌握企业级安全护栏配置、Multi-Agent 通信协议与高并发生产环境部署。' },
+            { id: '15', title: 'Prompt 工程师认证', org: '科大讯飞 AI 大学堂', date: '至 2028-08-09', code: 'XFPROMPT415126', cat: 'flytek', tag: '提示词工程', desc: '掌握思维链 (CoT)、少样本提示、ReAct 范式及结构化控制技巧。' },
+            { id: '16', title: '智能体工程师认证', org: '科大讯飞 AI 大学堂', date: '至 2028-08-09', code: 'XFAGENT973061', cat: 'flytek', tag: '智能体开发', desc: '具备构建讯飞星火大模型高阶 Agent、插件扩展开发及自动化任务编排落地能力。' },
+            { id: '17', title: 'RAG 工程师认证', org: '科大讯飞 AI 大学堂', date: '至 2028-08-09', code: 'XFRAG745928', cat: 'flytek', tag: 'RAG工程师', desc: '精通知识库召回评估指标、高维向量索引优化与多模态文档检索。' },
+            { id: '18', title: '微调工程师认证', org: '科大讯飞 AI 大学堂', date: '至 2028-08-09', code: 'XFTUNING712071', cat: 'flytek', tag: '模型微调', desc: '具备大模型指令微调 (SFT)、LoRA/QLoRA 训练调参与模型评估全链路工程经验。' }
+        ];
+        // 证书原图（cert-01.png ~ cert-18.png，与上方条目按序一一对应）
+        CERTIFICATES.forEach((c, i) => { c.img = `cert-${String(i + 1).padStart(2, '0')}.png`; });
+
+        // 3. 重点项目数据库
+        const PROJECTS = [
+            {
+                id: '01',
+                title: '校园坦克大战',
+                subtitle: '原生 Canvas 15 独立解耦模块引擎',
+                desc: '完全使用原生 HTML5 Canvas 与 JavaScript 独立手写的高性能网页对战游戏，无任何第三方依赖。包含玩家流畅操控、360° 炮塔瞄准、敌方 AI 寻路、子弹物理碰撞与中央 HK 防御工事。',
+                highlights: [
+                    'Canvas 离屏地面缓存 + 砖墙多段损伤破坏状态，稳定保持 60fps 丝滑渲染。',
+                    '物理与碰撞引擎：子弹命中红砖飞溅瓦砾碎片，击中合金钢墙产生跳弹火花。',
+                    '15 模块解耦架构：涵盖 config / input / map / entities / ai / physics / audio / render。'
+                ],
+                link: 'https://github.com/fklnk/tank-game'
+            },
+            {
+                id: '02',
+                title: '沉浸式个人主页',
+                subtitle: '空间叙事主页 · 动态 WebGL 与全景交互',
+                desc: '独立完成的高沉浸感滚动叙事个人主页，包含 18 项官方资质 Bento 矩阵排版、全屏视差背景视频、丝绸紫流光着色器背景及炫彩粒子反馈交互。',
+                highlights: [
+                    '轻量高性能动效：纯原生 Canvas 粒子与 WebGL 流体光丝背景，无卡顿无重排抖动。',
+                    '完全响应式设计：自适应电脑宽屏与移动端触摸顺畅滑动。',
+                    '全中文深度本土化：兼具国际前沿视觉张力与国内评审严谨标准。'
+                ],
+                link: 'https://github.com/fklnk'
+            },
+            {
+                id: '03',
+                title: '自动化智能体工作流',
+                subtitle: '每日自动化抓取与多智能体报告',
+                desc: '基于 Python 与主流大模型 API 搭建的日常技术资讯自动化抓取与提炼系统，能够每天定时汇总全球 AI、前端与开源动态，生成结构化 Markdown 周报。',
+                highlights: [
+                    '采用精准结构化 Prompt 控制输出格式，自动去除噪音资讯。',
+                    '接入云端定时调度系统，实现 7x24 小时零人工干预自动运行。',
+                    '与飞书/企微 Webhook 深度打通，实现每日晨间自动推送。'
+                ],
+                link: 'https://github.com/fklnk'
+            }
+        ];
+
+        // 4. 顶部滚动进度条
+        window.addEventListener('scroll', () => {
+            const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            const pb = document.getElementById('scroll-progress');
+            if (pb) pb.style.width = scrolled + '%';
+        });
+
+        // 5. 原生打字机叙事动效
+        const typewriterPhrases = [
+            "计算机科学与技术 · 准大一新生",
+            "18 项大模型官方权威认证获得者",
+            "全栈开发与 Web 交互学习者",
+            "AI 原生开发与 Vibe Coding 实践者",
+            "先完成再完美的极客行动派"
+        ];
+        let phraseIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        const typewriterEl = document.getElementById('typewriter-text');
+
+        function runTypewriter() {
+            const currentPhrase = typewriterPhrases[phraseIndex];
+            if (isDeleting) {
+                typewriterEl.textContent = currentPhrase.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                typewriterEl.textContent = currentPhrase.substring(0, charIndex + 1);
+                charIndex++;
+            }
+
+            let typeSpeed = isDeleting ? 35 : 85;
+            if (!isDeleting && charIndex === currentPhrase.length) {
+                typeSpeed = 1600;
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                phraseIndex = (phraseIndex + 1) % typewriterPhrases.length;
+                typeSpeed = 400;
+            }
+            setTimeout(runTypewriter, typeSpeed);
+        }
+        runTypewriter();
+
+        // 6. 视差渐入 IntersectionObserver
+        const revealElements = document.querySelectorAll('.reveal-node');
+        if ('IntersectionObserver' in window) {
+            revealElements.forEach(el => el.classList.add('reveal-pending'));
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.remove('reveal-pending');
+                        entry.target.classList.add('reveal-active');
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+            revealElements.forEach(el => observer.observe(el));
+        }
+
+        // 7. 视觉至上 · 全局目光追踪计算
+        const eyeContainer = document.getElementById('eye-container');
+        const eyePupil = document.getElementById('eye-pupil');
+        window.addEventListener('mousemove', (e) => {
+            if (eyeContainer && eyePupil) {
+                const rect = eyeContainer.getBoundingClientRect();
+                const eyeX = rect.left + rect.width / 2;
+                const eyeY = rect.top + rect.height / 2;
+                const dx = e.clientX - eyeX;
+                const dy = e.clientY - eyeY;
+                const angle = Math.atan2(dy, dx);
+                const distance = Math.min(26, Math.hypot(dx, dy) / 10);
+                const px = Math.cos(angle) * distance;
+                const py = Math.sin(angle) * distance;
+                eyePupil.style.transform = `translate(${px}px, ${py}px)`;
+            }
+        });
+
+        // 8. AI 卡片触碰白光渐变覆盖动效
+        function triggerAiCardEffect(card) {
+            card.classList.add('active-sweep');
+            setTimeout(() => {
+                card.classList.remove('active-sweep');
+            }, 700);
+        }
+
+        // 9. Canvas Confetti 粒子礼花系统
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        const confettiCtx = confettiCanvas.getContext('2d');
+        let particles = [];
+        function resizeConfetti() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        resizeConfetti();
+        window.addEventListener('resize', resizeConfetti);
+
+        class ConfettiParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 3;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed - 2;
+                this.size = Math.random() * 7 + 4;
+                this.colors = ['#10b981', '#06b6d4', '#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#ffffff'];
+                this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
+                this.alpha = 1;
+                this.decay = Math.random() * 0.02 + 0.015;
+                this.gravity = 0.2;
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = Math.random() * 10 - 5;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.alpha -= this.decay;
+                this.rotation += this.rotationSpeed;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate((this.rotation * Math.PI) / 180);
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size * 0.6);
+                ctx.restore();
+            }
+        }
+
+        let confettiAnimId = null;
+        function animateConfetti() {
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            particles.forEach((p, idx) => {
+                p.update();
+                p.draw(confettiCtx);
+                if (p.alpha <= 0) particles.splice(idx, 1);
+            });
+            if (particles.length > 0) {
+                confettiAnimId = requestAnimationFrame(animateConfetti);
+            } else {
+                cancelAnimationFrame(confettiAnimId);
+                confettiAnimId = null;
+            }
+        }
+
+        function fireConfetti(x, y) {
+            for (let i = 0; i < 45; i++) {
+                particles.push(new ConfettiParticle(x, y));
+            }
+            if (!confettiAnimId) animateConfetti();
+        }
+
+        // 10. Toast 提示气泡与复制
+        let toastTimer = null;
+        function showToast(text) {
+            const toast = document.getElementById('toast-box');
+            const toastText = document.getElementById('toast-text');
+            if (!toast || !toastText) return;
+            toastText.textContent = text;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
+            }, 2500);
+        }
+
+        function copyContact(text, label, event) {
+            if (event) fireConfetti(event.clientX, event.clientY);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text);
+            } else {
+                const input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+            }
+            showToast(`✅ 已复制 ${label}: ${text}`);
+        }
+
+        // 11. 证书墙与 Lightbox 模态框逻辑
+        let activeCertIndex = 0;
+        function renderCertGrid(filter = 'all') {
+            const grid = document.getElementById('cert-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            CERTIFICATES.forEach((c, idx) => {
+                if (filter !== 'all' && c.cat !== filter) return;
+                const card = document.createElement('div');
+                card.className = 'p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/50 hover:bg-white/[0.06] transition-all cursor-pointer space-y-2 group';
+                card.onclick = () => {
+                    closeCertWallModal();
+                    openLightbox(idx);
+                };
+                card.innerHTML = `
+                    <div class="relative rounded-xl overflow-hidden border border-white/10 bg-black/40">
+                        <img src="${c.img}" alt="${c.title}" loading="lazy" class="w-full h-32 object-cover object-top group-hover:scale-[1.04] transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">${c.tag}</span>
+                        <span class="text-[11px] font-mono text-neutral-400">${c.date}</span>
+                    </div>
+                    <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">${c.title}</h4>
+                    <p class="text-xs text-neutral-400 font-mono truncate">${c.org}</p>
+                    <div class="text-[11px] font-mono text-neutral-400 pt-1 border-t border-white/5 flex items-center justify-between">
+                        <span class="truncate">编号: ${c.code}</span>
+                        <i class="fa-solid fa-magnifying-glass-plus text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterCerts(cat) {
+            ['tab-all', 'tab-ali', 'tab-flytek'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.className = 'px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 font-mono text-xs font-bold transition-all';
+                }
+            });
+            const activeBtn = document.getElementById('tab-' + cat);
+            if (activeBtn) activeBtn.className = 'px-4 py-1.5 rounded-full bg-emerald-500 text-black font-mono text-xs font-bold transition-all';
+            renderCertGrid(cat);
+        }
+
+        function openCertWallModal() {
+            renderCertGrid('all');
+            const m = document.getElementById('cert-wall-modal');
+            if (m) {
+                m.classList.remove('hidden');
+                m.classList.add('flex');
+            }
+        }
+        function closeCertWallModal() {
+            const m = document.getElementById('cert-wall-modal');
+            if (m) {
+                m.classList.remove('flex');
+                m.classList.add('hidden');
+            }
+        }
+
+        function openLightbox(index) {
+            activeCertIndex = index;
+            const cert = CERTIFICATES[index];
+            if (!cert) return;
+            document.getElementById('lb-tag').textContent = `${cert.tag} // ${cert.date}`;
+            document.getElementById('lb-title').textContent = cert.title;
+            document.getElementById('lb-org').textContent = `发证机构: ${cert.org}`;
+            document.getElementById('lb-img').src = cert.img;
+            document.getElementById('lb-code').textContent = cert.code;
+            document.getElementById('lb-desc').textContent = cert.desc;
+
+            const lb = document.getElementById('lightbox');
+            if (lb) {
+                lb.classList.remove('hidden');
+                lb.classList.add('flex');
+            }
+        }
+        function closeLightbox() {
+            const lb = document.getElementById('lightbox');
+            if (lb) {
+                lb.classList.remove('flex');
+                lb.classList.add('hidden');
+            }
+        }
+        function copyLbCode(e) {
+            const cert = CERTIFICATES[activeCertIndex];
+            if (cert) copyContact(cert.code, '证书防伪编码', e);
+        }
+
+        // 12. 项目详情弹窗
+        function openProjectModal(idx) {
+            const p = PROJECTS[idx];
+            if (!p) return;
+            document.getElementById('proj-badge').textContent = `PROJECT ${p.id}`;
+            document.getElementById('proj-title').textContent = p.title;
+            document.getElementById('proj-subtitle').textContent = p.subtitle;
+            document.getElementById('proj-desc').textContent = p.desc;
+            const list = document.getElementById('proj-highlights');
+            list.innerHTML = '';
+            p.highlights.forEach(h => {
+                const li = document.createElement('li');
+                li.className = 'flex items-start gap-2';
+                li.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mt-1"></i><span>${h}</span>`;
+                list.appendChild(li);
+            });
+            document.getElementById('proj-link').href = p.link;
+
+            const m = document.getElementById('project-modal');
+            if (m) {
+                m.classList.remove('hidden');
+                m.classList.add('flex');
+            }
+        }
+        function closeProjectModal() {
+            const m = document.getElementById('project-modal');
+            if (m) {
+                m.classList.remove('flex');
+                m.classList.add('hidden');
+            }
+        }
+
+        // 13. AI 对话分身 Copilot（本地知识库问答：关键词匹配，离线秒回）
+        function openCopilotModal() {
+            const drawer = document.getElementById('copilot-drawer');
+            if (drawer) drawer.classList.remove('translate-x-full');
+        }
+        function closeCopilotModal() {
+            const drawer = document.getElementById('copilot-drawer');
+            if (drawer) drawer.classList.add('translate-x-full');
+        }
+
+        // 分身知识库（命中关键词即返回对应回答）
+        const COPILOT_KB = [
+            { keys: ['学校', '院校', '大学', '学院', '专业', '电子科技'], reply: '胡坤是 2026 级电子科技大学成都学院计算机科学与技术专业的新生，主打 AI 原生开发与全栈工程落地！' },
+            { keys: ['证书', '认证', '18', '十八', '达摩院', '讯飞'], reply: '他手握 18 项官方权威认证：阿里云达摩院高级/初级人工智能训练师、PolarDB 数据库管理、科大讯飞 Prompt/智能体/RAG/微调工程师等，页面「03//证书集」里可逐张查看原图与防伪编号！' },
+            { keys: ['坦克', '项目', '作品', '游戏'], reply: '代表作是 HK 校园坦克大战：原生 Canvas、15 个独立解耦模块、状态机 AI 与网格化碰撞检测。页面「04//重点项目」里可以直达源码仓库！' },
+            { keys: ['技能', '技术', '会什么', '技术栈', 'stack'], reply: '技术主线：Python / Web 前端（Canvas、Three.js）、大模型工具链与 Prompt 工程、Git/GitHub 工作流，另外还有一手漂亮的 Office/PPT 演示设计。' },
+            { keys: ['爱好', '兴趣', '喜欢', '电竞', '阅读'], reply: '业余是游戏与电竞爱好者——正是他对游戏手感与碰撞逻辑的较真，孕育了坦克大战这个项目；偶尔也喜欢安静读书。' },
+            { keys: ['规划', '目标', '未来'], reply: '他的大学规划：大一大二打牢工程基本功，持续考取大模型方向认证，目标成为 AI 原生应用的全栈工程师。' },
+            { keys: ['联系', '邮箱', '电话', 'qq', '微信'], reply: '最快捷的方式：点击页面底部信封/电话/QQ 图标直达，欢迎随时来聊合作与交流！' },
+            { keys: ['你是谁', '介绍', '是谁', '你好', 'hi', 'hello'], reply: '我是胡坤的 AI 数字分身！他是我背后的真人——2026 级计算机专业新生、18 项认证持有者、Vibe Coding 实践者。想了解什么尽管问～' }
+        ];
+
+        function handleCopilotSubmit(e) {
+            if (e) e.preventDefault();
+            const input = document.getElementById('copilot-input');
+            const q = input.value.trim();
+            if (!q) return;
+            input.value = '';
+            sendCopilotMessage(q);
+        }
+
+        function sendCopilotPreset(q) {
+            sendCopilotMessage(q);
+        }
+
+        function sendCopilotMessage(userText) {
+            const chatBox = document.getElementById('copilot-chat-box');
+            // 追加用户气泡
+            const userBubble = document.createElement('div');
+            userBubble.className = 'flex gap-2.5 justify-end';
+            userBubble.innerHTML = `<div class="p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed max-w-[85%] bg-emerald-500 text-black font-semibold">${userText}</div>`;
+            chatBox.appendChild(userBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // 追加 Loading 占位
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'flex gap-2.5 justify-start';
+            loadingBubble.id = 'copilot-loading';
+            loadingBubble.innerHTML = `
+                <div class="w-7 h-7 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 text-xs mt-0.5">HK</div>
+                <div class="p-3.5 rounded-2xl text-xs text-neutral-400 bg-white/5 border border-white/10 flex items-center gap-2">
+                    <i class="fa-solid fa-spinner fa-spin text-emerald-400"></i>
+                    <span>AI 分身正在组织语言...</span>
+                </div>
+            `;
+            chatBox.appendChild(loadingBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // 本地知识库匹配（小延迟模拟思考，体验更自然）
+            const q = userText.toLowerCase();
+            const hit = COPILOT_KB.find(item => item.keys.some(k => q.includes(k)));
+            const reply = hit ? hit.reply : '这个问题我的知识库暂时没覆盖到，欢迎通过页面底部联系方式直接联系胡坤本人，他看到必回！';
+
+            setTimeout(() => {
+                const loader = document.getElementById('copilot-loading');
+                if (loader) loader.remove();
+                const aiBubble = document.createElement('div');
+                aiBubble.className = 'flex gap-2.5 justify-start';
+                aiBubble.innerHTML = `
+                    <div class="w-7 h-7 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 text-xs mt-0.5">HK</div>
+                    <div class="p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed max-w-[85%] bg-white/5 border border-white/10 text-neutral-200 whitespace-pre-wrap">${reply}</div>
+                `;
+                chatBox.appendChild(aiBubble);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 500);
+        }
+
+        // 14. AI 原型蓝图工坊（本地蓝图引擎：关键词匹配 + 领域模板，离线秒出 MVP 架构方案）
+        function setBlueprintPrompt(text) {
+            document.getElementById('blueprint-input').value = text;
+        }
+
+        // 领域蓝图模板库（命中关键词即采用对应领域的定制方案）
+        const BLUEPRINT_RULES = [
+            {
+                keys: ['弹球', '物理'],
+                name: '物理弹球对战',
+                loop: '双人开局 → 挡板接球与重力反弹 → 碰撞得分结算 → 下一局',
+                stack: '前端 Canvas 2D + requestAnimationFrame 渲染循环；自研向量碰撞反弹引擎；Web Audio API 合成音效；LocalStorage 存战绩',
+                plan: 'D1：物理引擎与挡板操控闭环｜D2：计分系统、音效与 AI 对手｜D3：打磨手感、部署上线',
+                prompt: '你是一名资深游戏物理架构师。请为「双人物理弹球对战」设计 15 个独立解耦模块（输入/物理/渲染/音频/计分/AI），明确每个模块的输入输出契约。'
+            },
+            {
+                keys: ['坦克', '游戏'],
+                name: '坦克对战游戏',
+                loop: '玩家操控 → 敌方 AI 巡逻与追击 → 弹道碰撞判定 → 关卡结算升级',
+                stack: '原生 Canvas 渲染；模块化 JS（config/utils/input/map/entities/ai 独立解耦）；A* 寻路 + 状态机 AI；网格化碰撞检测',
+                plan: 'D1：地图与坦克移动碰撞｜D2：弹道、敌方 AI 与胜负判定｜D3：关卡配置化与音效打磨',
+                prompt: '你是一名游戏架构师。请为「Canvas 坦克大战」设计模块化架构，要求碰撞系统将实体碰撞与触发器严格分离，AI 采用状态机驱动。'
+            },
+            {
+                keys: ['agent', '智能体', '自习', '自愈', '陪伴'],
+                name: '自愈自习 Agent',
+                loop: '目标设定 → 任务拆解执行 → 效果自检反思 → 失败自动换策略重试',
+                stack: 'LLM 编排（Function Calling）；短期记忆 + 向量长期记忆；ReAct 反思循环；前端 React + 后端 FastAPI',
+                plan: 'D1：单任务执行链路｜D2：反思与策略切换机制｜D3：记忆持久化与可视化面板',
+                prompt: '你是一名 Agent 架构师。请为「自愈式学习 Agent」设计 Planner-Executor-Reflector 三角色协作框架，重点设计失败自愈策略。'
+            },
+            {
+                keys: ['github', '周报', '自动化', '抓取', '爬取', '工作流'],
+                name: '自动化周报工作流',
+                loop: '定时抓取多源数据 → LLM 归纳去重 → 生成结构化周报 → 自动推送',
+                stack: 'Python 定时任务（APScheduler）；多源 API 抓取；LLM 摘要与 Markdown 渲染；企业微信/邮件 Webhook 推送',
+                plan: 'D1：数据抓取与清洗｜D2：LLM 归纳与模板渲染｜D3：推送通道与异常告警',
+                prompt: '你是一名自动化工程专家。请为「多源数据自动周报」设计容错管道，明确每个阶段的失败重试与降级方案。'
+            },
+            {
+                keys: ['rag', '知识库', '答疑', '课程', '问答'],
+                name: 'RAG 课程答疑库',
+                loop: '课件向量化入库 → 学生提问 → 向量召回 + 重排 → 生成带引用的回答',
+                stack: 'Embedding + 向量库（Milvus/FAISS）；文档切片与重排序；LLM 生成引用溯源；Next.js 前端',
+                plan: 'D1：文档入库链路｜D2：检索问答闭环｜D3：引用溯源与评测调优',
+                prompt: '你是一名 RAG 工程师。请为「课程答疑知识库」设计检索增强方案，重点设计召回率低时的查询改写策略。'
+            },
+            {
+                keys: ['商城', '电商', '购物', '推荐'],
+                name: 'AI 导购商城',
+                loop: '用户偏好输入 → 语义商品检索 → LLM 生成推荐理由 → 下单转化',
+                stack: '向量检索商品库；LLM 推荐理由生成；Next.js + Node.js；Redis 会话缓存',
+                plan: 'D1：商品库与检索｜D2：推荐理由生成｜D3：转化链路与埋点',
+                prompt: '你是一名电商架构师。请为「AI 导购商城」设计推荐链路，重点设计冷启动用户的画像兜底策略。'
+            }
+        ];
+
+        function handleGenerateBlueprint() {
+            const input = document.getElementById('blueprint-input');
+            const btn = document.getElementById('blueprint-btn');
+            const resBox = document.getElementById('blueprint-result');
+            const resText = document.getElementById('blueprint-text');
+            const query = input.value.trim();
+            if (!query) return;
+
+            // 关键词命中领域模板，未命中则用通用架构框架
+            const rule = BLUEPRINT_RULES.find(r => r.keys.some(k => query.toLowerCase().includes(k)));
+            const idea = rule ? rule.name : query;
+            const out = [
+                `# 「${idea}」MVP 架构蓝图`,
+                ``,
+                `## 1. 💡 核心业务闭环`,
+                rule ? rule.loop : '明确目标用户 → 核心场景最小闭环 → 数据沉淀反哺体验',
+                ``,
+                `## 2. 🛠 推荐技术栈`,
+                rule ? rule.stack : '前端：Next.js + Tailwind｜后端：FastAPI + SQLite｜模型：LLM API + 向量库 FAISS',
+                ``,
+                `## 3. ⚡ 3 天 MVP 研发路线`,
+                rule ? rule.plan : 'D1：核心链路跑通（先完成）｜D2：关键交互与数据闭环｜D3：打磨体验并部署（再完美）',
+                ``,
+                `## 4. 🧠 推荐 System Prompt 原型`,
+                rule ? rule.prompt : `你是一名资深全栈架构师。请为「${idea}」设计模块化 MVP 方案，明确技术选型理由与 3 天交付里程碑。`
+            ].join('\n');
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>正在构思...</span>`;
+            setTimeout(() => {
+                resText.textContent = out;
+                resBox.classList.remove('hidden');
+                showToast('✨ 架构蓝图已生成完成！');
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-fire"></i><span>生成技术蓝图</span>`;
+            }, 500);
+        }
+
+        function copyBlueprintOutput() {
+            const text = document.getElementById('blueprint-text').textContent;
+            copyContact(text, '技术蓝图内容');
+        }
+
+        // 15. 背景音乐（3 Strikes · 打开页面自动播放；若被浏览器策略拦截，首次交互时自动续播）
+        let bgmPlayer = null;
+        let isBgmPlaying = false;
+        let isBgmPausedByUser = false;
+
+        function getBgm() {
+            if (!bgmPlayer) {
+                bgmPlayer = new Audio('Terror Jr - 3 Strikes.mp3');
+                bgmPlayer.loop = true;
+                bgmPlayer.volume = 0.55;
+            }
+            return bgmPlayer;
+        }
+
+        function setBgmUi(playing) {
+            document.getElementById('bgm-icon').className = `fa-solid ${playing ? 'fa-pause' : 'fa-music'}`;
+            document.getElementById('bgm-text').textContent = playing ? '正在播放' : '背景音乐';
+        }
+
+        function playBgm() {
+            getBgm().play().then(() => {
+                isBgmPlaying = true;
+                setBgmUi(true);
+            }).catch(() => showToast('⚠️ 音乐加载失败，请点击右上角按钮重试'));
+        }
+
+        function toggleBgm() {
+            if (isBgmPlaying) {
+                getBgm().pause();
+                isBgmPlaying = false;
+                isBgmPausedByUser = true;
+                setBgmUi(false);
+                return;
+            }
+            isBgmPausedByUser = false;
+            playBgm();
+        }
+
+        // 页面加载后立即尝试自动播放（浏览器拦截时降级为首次交互续播）
+        window.addEventListener('load', () => {
+            getBgm().play().then(() => {
+                isBgmPlaying = true;
+                setBgmUi(true);
+            }).catch(() => {
+                const startOnGesture = () => {
+                    document.removeEventListener('pointerdown', startOnGesture);
+                    if (!isBgmPlaying && !isBgmPausedByUser) playBgm();
+                };
+                document.addEventListener('pointerdown', startOnGesture);
+            });
+        });
+
+        // 15.5 顶部导航响应式切换（桌面横排 / 移动端横滑，JS 显式控制确保二选一）
+        const navDesktopEl = document.getElementById('nav-desktop');
+        const navMobileEl = document.getElementById('nav-mobile');
+        function syncNavDisplay() {
+            const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+            navDesktopEl.style.display = isDesktop ? 'flex' : 'none';
+            navMobileEl.style.display = isDesktop ? 'none' : 'flex';
+        }
+        syncNavDisplay();
+        window.addEventListener('resize', syncNavDisplay);
+
+        // 16. WebGL 丝绸紫流光光丝着色器背景 (LightPillar 原生 Shader)
+        function initLightPillarGL() {
+            const canvas = document.getElementById('lightpillar-canvas');
+            if (!canvas) return;
+            const gl = canvas.getContext('webgl');
+            if (!gl) return;
+
+            function resize() {
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const vs = `attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+            const fs = `
+                precision mediump float;
+                uniform vec2 u_res;
+                uniform float u_time;
+
+                float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+                float noise(vec2 p) {
+                    vec2 i = floor(p); vec2 f = fract(p);
+                    vec2 u = f*f*(3.0-2.0*f);
+                    return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x),
+                               mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y);
+                }
+                float fbm(vec2 p) {
+                    float v = 0.0; float a = 0.5;
+                    for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.0; a *= 0.5; }
+                    return v;
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * u_res) / u_res.y;
+                    float x = uv.x * 2.4;
+                    float flow = fbm(vec2(x * 1.5, uv.y * 0.8 - u_time * 0.25));
+                    float pillar = 1.0 / (abs(x + (flow - 0.5) * 0.6) * 18.0 + 0.15);
+                    vec3 col1 = vec3(0.32, 0.15, 1.0); // 丝绸紫 #5227FF
+                    vec3 col2 = vec3(0.85, 0.27, 0.94); // 霓虹粉 #d946ef
+                    vec3 color = mix(col1, col2, uv.y + 0.5) * pillar;
+                    gl_FragColor = vec4(color * 1.6, clamp(pillar * 0.8, 0.0, 0.85));
+                }
+            `;
+
+            function createShader(gl, type, source) {
+                const s = gl.createShader(type);
+                gl.shaderSource(s, source);
+                gl.compileShader(s);
+                return s;
+            }
+            const prog = gl.createProgram();
+            gl.attachShader(prog, createShader(gl, gl.VERTEX_SHADER, vs));
+            gl.attachShader(prog, createShader(gl, gl.FRAGMENT_SHADER, fs));
+            gl.linkProgram(prog);
+            gl.useProgram(prog);
+
+            const buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+            const posAttr = gl.getAttribLocation(prog, 'p');
+            gl.enableVertexAttribArray(posAttr);
+            gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
+
+            const uRes = gl.getUniformLocation(prog, 'u_res');
+            const uTime = gl.getUniformLocation(prog, 'u_time');
+            let start = performance.now();
+
+            function render() {
+                gl.uniform2f(uRes, canvas.width, canvas.height);
+                gl.uniform1f(uTime, (performance.now() - start) * 0.001);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                requestAnimationFrame(render);
+            }
+            render();
+        }
+        initLightPillarGL();
+
+        // 17. 移动端折叠菜单切换
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu) menu.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>
