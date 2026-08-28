@@ -1528,9 +1528,8 @@
             copyContact(text, '技术蓝图内容');
         }
 
-        // 15. 背景音乐（3 Strikes · 打开页面自动播放；若被浏览器策略拦截，首次交互时自动续播）
+        // 15. 背景音乐（3 Strikes · 全页唯一实例；重复触发时新播放直接覆盖旧播放）
         let bgmPlayer = null;
-        let isBgmPlaying = false;
         let isBgmPausedByUser = false;
 
         function getBgm() {
@@ -1548,35 +1547,35 @@
         }
 
         function playBgm() {
-            getBgm().play().then(() => {
-                isBgmPlaying = true;
-                setBgmUi(true);
-            }).catch(() => showToast('⚠️ 音乐加载失败，请点击右上角按钮重试'));
+            const player = getBgm();
+            // 新播放覆盖旧播放：先停掉再从头开始，保证任何时刻只有一路音乐
+            if (!player.paused) {
+                player.pause();
+                player.currentTime = 0;
+            }
+            isBgmPausedByUser = false;
+            player.play().then(() => setBgmUi(true)).catch(() => showToast('⚠️ 音乐加载失败，请点击右上角按钮重试'));
         }
 
         function toggleBgm() {
-            if (isBgmPlaying) {
-                getBgm().pause();
-                isBgmPlaying = false;
+            const player = getBgm();
+            if (!player.paused) {
+                player.pause();
                 isBgmPausedByUser = true;
                 setBgmUi(false);
                 return;
             }
-            isBgmPausedByUser = false;
             playBgm();
         }
 
         // 页面加载后立即尝试自动播放（浏览器拦截时降级为首次触屏/点击续播）
         window.addEventListener('load', () => {
-            getBgm().play().then(() => {
-                isBgmPlaying = true;
-                setBgmUi(true);
-            }).catch(() => {
+            getBgm().play().then(() => setBgmUi(true)).catch(() => {
                 showToast('🎵 点击页面任意位置开启背景音乐');
                 const startOnGesture = () => {
                     document.removeEventListener('pointerdown', startOnGesture);
                     document.removeEventListener('touchstart', startOnGesture);
-                    if (!isBgmPlaying && !isBgmPausedByUser) playBgm();
+                    if (!isBgmPausedByUser) playBgm(); // 重复触发也会被"覆盖"逻辑合并为一路
                 };
                 document.addEventListener('pointerdown', startOnGesture);
                 document.addEventListener('touchstart', startOnGesture);
