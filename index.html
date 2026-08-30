@@ -892,8 +892,8 @@
                     </div>
                 </div>
 
-                <!-- 生成结果展示容器（浮现动画：渐显 + 上移 + 模糊消散） -->
-                <div id="blueprint-result" class="hidden p-6 rounded-2xl bg-black/85 border border-purple-500/40 text-xs sm:text-sm text-neutral-200 leading-relaxed whitespace-pre-wrap font-mono space-y-3 shadow-inner max-h-96 overflow-y-auto transition-all duration-700 ease-out opacity-0 translate-y-5 blur-sm">
+                <!-- 生成结果展示容器（高度从 0 平滑展开 + 打字机逐字输出，无布局跳变） -->
+                <div id="blueprint-result" class="p-6 rounded-2xl bg-black/85 border border-purple-500/40 text-xs sm:text-sm text-neutral-200 leading-relaxed whitespace-pre-wrap font-mono space-y-3 shadow-inner overflow-hidden transition-all duration-700 ease-out opacity-0 -translate-y-2 blur-sm" style="max-height:0;padding-top:0;padding-bottom:0;">
                     <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-2">
                         <span class="text-purple-400 font-bold font-mono flex items-center gap-1.5">
                             <i class="fa-solid fa-terminal"></i> // 蓝图输出
@@ -1805,15 +1805,28 @@
             // 触发全屏紫电雷击特效
             triggerLightningFlash();
             setTimeout(() => {
+                // 先以完整文本测得目标高度，随后容器高度从 0 平滑展开
                 resText.textContent = out;
-                resBox.classList.remove('hidden');
-                // 平滑浮现：先保持隐藏态样式，下一帧再过渡到可见（渐显 + 上移 + 模糊消散）
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                    resBox.classList.remove('opacity-0', 'translate-y-5', 'blur-sm');
-                }));
-                showToast('⚡ 架构蓝图已生成完成！');
-                btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-fire"></i><span>生成技术蓝图</span>`;
+                resBox.classList.remove('overflow-y-auto');
+                const targetH = Math.min(resBox.scrollHeight, 384);
+                requestAnimationFrame(() => {
+                    resBox.style.maxHeight = targetH + 'px';
+                    resBox.style.paddingTop = '1.5rem';
+                    resBox.style.paddingBottom = '1.5rem';
+                    resBox.classList.remove('opacity-0', '-translate-y-2', 'blur-sm');
+                });
+                // 打字机逐字输出（终端光标 ▌），完成后恢复按钮并提示
+                let i = 0;
+                const CHUNK = 4, TICK = 16;
+                (function type() {
+                    i = Math.min(out.length, i + CHUNK);
+                    resText.textContent = out.slice(0, i) + (i < out.length ? ' ▌' : '');
+                    if (i < out.length) { setTimeout(type, TICK); return; }
+                    resBox.classList.add('overflow-y-auto');
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-fire"></i><span>生成技术蓝图</span>`;
+                    showToast('⚡ 架构蓝图已生成完成！');
+                })();
             }, 500);
         }
 
