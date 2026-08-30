@@ -93,7 +93,10 @@
             100% { transform: translate(-8%, -6%) rotate(-2deg); }
         }
         .glass-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-4px) scale(1.05);
+            /* 悬停放大镜：背景折射模糊加深（聚焦效果），内容随卡片以光标为锚点放大 */
+            backdrop-filter: blur(9px) saturate(200%) brightness(1.18);
+            -webkit-backdrop-filter: blur(9px) saturate(200%) brightness(1.18);
             box-shadow:
                 inset 0 1px 1px rgba(255, 255, 255, 0.5),
                 inset 0 0 16px rgba(255, 255, 255, 0.06),
@@ -198,16 +201,6 @@
             80% { transform: rotate(-2deg); }
             100% { transform: rotate(0deg); }
         }
-        /* 证书缩略图放大镜：悬停时以光标为锚点放大（transform-origin 由 JS 实时跟随）+ 轻微景深模糊 */
-        .cert-thumb img {
-            transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), filter 0.45s ease;
-            will-change: transform;
-        }
-        .cert-thumb:hover img {
-            transform: scale(2.1);
-            filter: blur(0.6px) saturate(1.15) brightness(1.05);
-        }
-
         /* 悬挂物弹簧摆动 (联系我 弹簧电话)：触发器挂在静态父容器上 + 透明缓冲区，
            防止旋转把圆圈甩离光标导致 hover 反复进出产生抽搐 */
         .phone-dangle-zone {
@@ -1399,8 +1392,8 @@
                     openLightbox(idx);
                 };
                 card.innerHTML = `
-                    <div class="cert-thumb relative rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                        <img src="${c.img}" alt="${c.title}" loading="lazy" class="w-full h-32 object-cover object-top">
+                    <div class="relative rounded-xl overflow-hidden border border-white/10 bg-black/40">
+                        <img src="${c.img}" alt="${c.title}" loading="lazy" class="w-full h-32 object-cover object-top group-hover:scale-[1.04] transition-transform duration-500">
                         <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
                     </div>
                     <div class="flex items-center justify-between">
@@ -1429,20 +1422,6 @@
             if (activeBtn) activeBtn.className = 'px-4 py-1.5 rounded-full bg-emerald-500 text-black font-mono text-xs font-bold transition-all';
             renderCertGrid(cat);
         }
-
-        // 证书缩略图放大镜：transform-origin 实时锚定光标位置（事件委托到 grid，兼容筛选重渲染）
-        (function () {
-            const grid = document.getElementById('cert-grid');
-            if (!grid) return;
-            grid.addEventListener('mousemove', (e) => {
-                const wrap = e.target.closest('.cert-thumb');
-                if (!wrap) return;
-                const img = wrap.querySelector('img');
-                const r = wrap.getBoundingClientRect();
-                img.style.transformOrigin =
-                    `${(((e.clientX - r.left) / r.width) * 100).toFixed(2)}% ${(((e.clientY - r.top) / r.height) * 100).toFixed(2)}%`;
-            }, { passive: true });
-        })();
 
         function openCertWallModal() {
             renderCertGrid('all');
@@ -1859,7 +1838,7 @@
             copyContact(text, '技术蓝图内容');
         }
 
-        // 14.9 液态玻璃边缘光标折射（光标靠近边框 → 边缘局部变色增亮，模拟玻璃接壤折射）
+        // 14.9 液态玻璃边缘光标折射（光标靠近边框 → 边缘局部变色增亮）+ 卡片内容以光标为锚点的放大镜
         (function () {
             const cards = Array.from(document.querySelectorAll('.glass-card'));
             if (!cards.length) return;
@@ -1877,6 +1856,11 @@
                         card.style.setProperty('--mx', (((clientX - r.left) / r.width) * 100).toFixed(2) + '%');
                         card.style.setProperty('--my', (((clientY - r.top) / r.height) * 100).toFixed(2) + '%');
                         card.style.setProperty('--edge-o', (1 - dist / NEAR).toFixed(3));
+                        // 光标在卡片内部时：放大镜锚点跟随光标（悬停放大以光标为中心）
+                        if (dist === 0) {
+                            card.style.transformOrigin =
+                                `${(((clientX - r.left) / r.width) * 100).toFixed(2)}% ${(((clientY - r.top) / r.height) * 100).toFixed(2)}%`;
+                        }
                     } else {
                         card.style.setProperty('--edge-o', '0');
                     }
