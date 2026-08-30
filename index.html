@@ -99,19 +99,21 @@
                 0 16px 36px rgba(0, 0, 0, 0.55),
                 0 0 26px rgba(34, 197, 94, 0.22);
         }
-        /* 法则6&7: 边缘高光色散 (mask 挖出 1px 液态表面张力环) */
+        /* 法则6&7: 变色边缘 (上下亮中间透的液态张力环，透出背景色产生流动变色) */
         .glass-card::before {
             content: '';
             position: absolute;
             inset: 0;
             border-radius: inherit;
-            padding: 1px;
+            padding: 1.4px;
             background: linear-gradient(
-                135deg,
-                rgba(255, 255, 255, 0.7) 0%,
-                rgba(255, 255, 255, 0.0) 30%,
-                transparent 50%,
-                rgba(16, 185, 129, 0.3) 100%
+                180deg,
+                rgba(255, 255, 255, 0.45) 0%,
+                rgba(255, 255, 255, 0.15) 20%,
+                rgba(255, 255, 255, 0) 40%,
+                rgba(255, 255, 255, 0) 60%,
+                rgba(255, 255, 255, 0.15) 80%,
+                rgba(255, 255, 255, 0.45) 100%
             );
             background-size: 220% 220%;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -152,6 +154,27 @@
             top: 0; left: 15%; width: 70%; height: 40%;
             background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent);
             border-radius: 50%;
+            pointer-events: none;
+        }
+        /* 水滴变色边缘（与玻璃卡片同款液态张力环） */
+        .liquid-pill::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0.45) 0%,
+                rgba(255, 255, 255, 0.15) 30%,
+                rgba(255, 255, 255, 0) 50%,
+                rgba(255, 255, 255, 0.15) 70%,
+                rgba(255, 255, 255, 0.45) 100%
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
             pointer-events: none;
         }
 
@@ -329,13 +352,12 @@
         </div>
     </header>
 
-    <!-- ===================== 全局深邃视频背景 (全页固定 · 液态玻璃折射光源) ===================== -->
-    <div class="fixed inset-0 z-0 pointer-events-none">
-        <video
-            class="w-full h-full object-cover opacity-80 contrast-125 saturate-150 transform-gpu"
+    <!-- ===================== 全局深邃视频背景 (全页固定 · 液态玻璃折射光源 · rAF 无缝循环渐隐) ===================== -->
+    <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <video id="bg-video"
+            class="w-full h-full object-cover translate-y-[17%]"
             autoPlay loop muted playsInline preload="auto"
-            style="will-change: transform, opacity;"
-            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4"
+            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_115001_bcdaa3b4-03de-47e7-ad63-ae3e392c32d4.mp4"
         ></video>
         <!-- 四周暗角、中心通透：保证文字可读性的同时让玻璃卡片处处有光可折 -->
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#020408_95%)] opacity-95"></div>
@@ -1784,6 +1806,42 @@
             const text = document.getElementById('blueprint-text').textContent;
             copyContact(text, '技术蓝图内容');
         }
+
+        // 14.8 背景视频无缝循环渐隐系统（rAF 手写淡入淡出，消除循环接缝的突兀跳变）
+        (function () {
+            const video = document.getElementById('bg-video');
+            if (!video) return;
+            const FADE_MS = 500;
+            let rafId = null;
+            let fadingOut = false;
+            function animateFade(target, onDone) {
+                cancelAnimationFrame(rafId); // 新淡入淡出取消进行中的旧动画，避免互相竞争
+                const startOpacity = parseFloat(getComputedStyle(video).opacity); // 从当前透明度续渐，不瞬跳
+                const startTime = performance.now();
+                function step(now) {
+                    const t = Math.min(1, (now - startTime) / FADE_MS);
+                    video.style.opacity = (startOpacity + (target - startOpacity) * t).toFixed(3);
+                    if (t < 1) rafId = requestAnimationFrame(step);
+                    else if (onDone) onDone();
+                }
+                rafId = requestAnimationFrame(step);
+            }
+            video.addEventListener('timeupdate', () => {
+                // 距结束 0.55 秒时开始淡出（fadingOut 防止 timeupdate 重复触发）
+                if (!fadingOut && video.duration && video.currentTime >= video.duration - 0.55) {
+                    fadingOut = true;
+                    animateFade(0);
+                }
+            });
+            video.addEventListener('ended', () => {
+                setTimeout(() => {
+                    video.currentTime = 0;
+                    video.play();
+                    fadingOut = false;
+                    animateFade(1);
+                }, 100);
+            });
+        })();
 
         // 15. 背景音乐（3 Strikes · 全页唯一实例；重复触发时新播放直接覆盖旧播放）
         let bgmPlayer = null;
