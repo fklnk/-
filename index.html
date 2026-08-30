@@ -73,7 +73,8 @@
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1), --edge-o 0.25s ease;
         }
         /* 法则5补充: 玻璃体内流体高光 (清晰可见的液态漂移) + 光标侧内壁折射泛光 */
-        .glass-card::after {
+        .glass-card::after,
+        .cert-card::after {
             content: '';
             position: absolute;
             inset: -20%;
@@ -93,16 +94,24 @@
             100% { transform: translate(-8%, -6%) rotate(-2deg); }
         }
         .glass-card:hover {
-            transform: translateY(-4px) scale(1.05);
-            /* 悬停放大镜：背景折射模糊加深（聚焦效果），内容随卡片以光标为锚点放大 */
-            backdrop-filter: blur(9px) saturate(200%) brightness(1.18);
-            -webkit-backdrop-filter: blur(9px) saturate(200%) brightness(1.18);
+            transform: translateY(-4px);
             box-shadow:
                 inset 0 1px 1px rgba(255, 255, 255, 0.5),
                 inset 0 0 16px rgba(255, 255, 255, 0.06),
                 inset 0 -1px 2px rgba(0, 0, 0, 0.35),
                 0 16px 36px rgba(0, 0, 0, 0.55),
                 0 0 26px rgba(34, 197, 94, 0.22);
+        }
+        /* 圆形放大镜透镜外观 */
+        #glass-lens {
+            border: 1.5px solid rgba(255, 255, 255, 0.55);
+            box-shadow:
+                0 12px 34px rgba(0, 0, 0, 0.55),
+                inset 0 0 24px rgba(255, 255, 255, 0.1),
+                0 0 22px rgba(34, 197, 94, 0.18);
+            background: rgba(3, 5, 8, 0.35);
+            backdrop-filter: blur(1px);
+            -webkit-backdrop-filter: blur(1px);
         }
         /* 法则7: 注册边缘光强度变量，支持平滑过渡 */
         @property --edge-o {
@@ -111,7 +120,8 @@
             initial-value: 0;
         }
         /* 法则4&6: 边缘折射环 —— 光标靠近边框时局部亮起变色（模拟厚玻璃接壤折射），底层保留上下渐亮的液态张力环 */
-        .glass-card::before {
+        .glass-card::before,
+        .cert-card::before {
             content: '';
             position: absolute;
             inset: 0;
@@ -140,8 +150,13 @@
             z-index: -1;
         }
         /* 液态动态: 悬停时边缘高光沿轮廓流动并增亮（第一层光标折射光固定不动，仅底层张力环流动） */
-        .glass-card:hover::before {
+        .glass-card:hover::before,
+        .cert-card:hover::before {
             animation: glass-edge-flow 2.2s linear infinite;
+        }
+        /* 证书卡片共享玻璃动效变量过渡 */
+        .cert-card {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1), --edge-o 0.25s ease;
         }
         @keyframes glass-edge-flow {
             0% { background-position: 50% 50%, 0% 0%; }
@@ -379,6 +394,11 @@
 
     <!-- 紫色闪电雷击交互层 (默认完全透明，生成蓝图时触发 WebGL 雷电着色器) -->
     <canvas id="lightning-canvas" class="fixed inset-0 z-[1] pointer-events-none opacity-0 transition-opacity duration-1000 ease-out mix-blend-screen"></canvas>
+
+    <!-- 液态玻璃放大镜：悬停玻璃卡片时出现圆形透镜，镜内内容以 K 倍放大并跟随光标 -->
+    <div id="glass-lens" class="fixed z-[300] pointer-events-none opacity-0 transition-opacity duration-200 hidden rounded-full overflow-hidden">
+        <div id="lens-content" class="absolute origin-top-left"></div>
+    </div>
 
     <!-- ===================== 01 HERO 首屏动态叙事区 ===================== -->
     <section id="about" class="min-h-screen pt-28 pb-16 flex items-center justify-center relative px-6 overflow-hidden">
@@ -1386,7 +1406,7 @@
             CERTIFICATES.forEach((c, idx) => {
                 if (filter !== 'all' && c.cat !== filter) return;
                 const card = document.createElement('div');
-                card.className = 'p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/50 hover:bg-white/[0.06] transition-all cursor-pointer space-y-2 group';
+                card.className = 'relative cert-card p-4 rounded-2xl bg-white/[0.06] backdrop-blur-md border border-white/10 hover:border-emerald-500/50 hover:bg-white/[0.1] transition-all cursor-pointer space-y-2 group';
                 card.onclick = () => {
                     closeCertWallModal();
                     openLightbox(idx);
@@ -1838,9 +1858,68 @@
             copyContact(text, '技术蓝图内容');
         }
 
+        // 14.95 液态玻璃放大镜：悬停卡片出现圆形透镜，镜内为卡片内容的 K 倍缩放克隆，实时跟随光标
+        (function () {
+            if (!window.matchMedia('(hover: hover)').matches) return; // 仅桌面端启用
+            const lens = document.getElementById('glass-lens');
+            const inner = document.getElementById('lens-content');
+            if (!lens || !inner) return;
+            const LENS = 150; // 透镜直径（px）
+            const K = 1.6;    // 放大倍率
+            let activeCard = null;
+
+            // 光标处画面映射进镜心：克隆层按 K 缩放后平移对齐
+            function place(e) {
+                const r = activeCard.getBoundingClientRect();
+                lens.style.left = (e.clientX - LENS / 2) + 'px';
+                lens.style.top = (e.clientY - LENS / 2) + 'px';
+                inner.style.left = (LENS / 2 - (e.clientX - r.left) * K) + 'px';
+                inner.style.top = (LENS / 2 - (e.clientY - r.top) * K) + 'px';
+            }
+
+            function show(card, e) {
+                activeCard = card;
+                // 克隆真实 DOM（保真度最高）：剔除卡片样式类与重复 id/事件，仅保留布局
+                const clone = card.cloneNode(true);
+                clone.classList.remove('glass-card', 'relative', 'overflow-hidden');
+                clone.classList.add('absolute');
+                clone.removeAttribute('id');
+                clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+                clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
+                inner.replaceChildren(clone);
+                inner.style.transition = 'none'; // 镜内克隆禁用过渡，透镜跟随必须零延迟
+                inner.style.width = card.offsetWidth + 'px';
+                inner.style.height = card.offsetHeight + 'px';
+                inner.style.transform = `scale(${K})`;
+                inner.style.transformOrigin = '0 0';
+                place(e);
+                lens.classList.remove('hidden');
+                requestAnimationFrame(() => lens.classList.remove('opacity-0'));
+            }
+
+            function hide() {
+                activeCard = null;
+                lens.classList.add('opacity-0');
+                setTimeout(() => { if (!activeCard) lens.classList.add('hidden'); }, 200);
+            }
+
+            document.addEventListener('mouseover', (e) => {
+                const card = e.target.closest('.glass-card, .cert-card');
+                if (!card || card === activeCard) return;
+                if (card.closest('#lightbox, #project-modal')) return; // 弹窗内不启用
+                show(card, e);
+            });
+            document.addEventListener('mousemove', (e) => {
+                const card = e.target.closest('.glass-card, .cert-card');
+                if (card && card === activeCard) place(e);
+                else if (!card && activeCard) hide();
+            }, { passive: true });
+            window.addEventListener('scroll', () => { if (activeCard) hide(); }, { passive: true });
+        })();
+
         // 14.9 液态玻璃边缘光标折射（光标靠近边框 → 边缘局部变色增亮）+ 卡片内容以光标为锚点的放大镜
         (function () {
-            const cards = Array.from(document.querySelectorAll('.glass-card'));
+            const cards = Array.from(document.querySelectorAll('.glass-card, .cert-card'));
             if (!cards.length) return;
             const NEAR = 90; // 边框感应半径（px）
             let pending = null;
@@ -1856,11 +1935,6 @@
                         card.style.setProperty('--mx', (((clientX - r.left) / r.width) * 100).toFixed(2) + '%');
                         card.style.setProperty('--my', (((clientY - r.top) / r.height) * 100).toFixed(2) + '%');
                         card.style.setProperty('--edge-o', (1 - dist / NEAR).toFixed(3));
-                        // 光标在卡片内部时：放大镜锚点跟随光标（悬停放大以光标为中心）
-                        if (dist === 0) {
-                            card.style.transformOrigin =
-                                `${(((clientX - r.left) / r.width) * 100).toFixed(2)}% ${(((clientY - r.top) / r.height) * 100).toFixed(2)}%`;
-                        }
                     } else {
                         card.style.setProperty('--edge-o', '0');
                     }
@@ -1912,13 +1986,13 @@
             });
         })();
 
-        // 15. 背景音乐（3 Strikes · 全页唯一实例；重复触发时新播放直接覆盖旧播放）
+        // 15. 背景音乐（DREAM FUNK · 全页唯一实例；重复触发时新播放直接覆盖旧播放）
         let bgmPlayer = null;
         let isBgmPausedByUser = false;
 
         function getBgm() {
             if (!bgmPlayer) {
-                bgmPlayer = new Audio('Terror Jr - 3 Strikes.mp3');
+                bgmPlayer = new Audio('Lumix,Kxrsed - DREAM FUNK.mp3');
                 bgmPlayer.loop = true;
                 bgmPlayer.volume = 0.55;
             }

@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>胡坤 | AI Native 原生全栈开发者</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #020408;
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #020408; }
+        ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #34d399; }
+
+        /* Apple Liquid Glass - 遵循 7 大物理光学法则重建 (抛弃磨砂毛玻璃，回归清透液态) */
+        .glass-card {
+            /* 法则6: 剔除死白底色，改为极微弱的纯黑基底保证深邃 */
+            background: rgba(0, 0, 0, 0.05);
+            /* 法则4 & 5: 降低毛玻璃磨砂感，保留液态水滴的清透折射 (blur降至12px，拉高saturate至200%) */
+            backdrop-filter: blur(12px) saturate(200%) brightness(1.15);
+            -webkit-backdrop-filter: blur(12px) saturate(200%) brightness(1.15);
+            /* 法则2: SDF 轮廓模拟 */
+            border-radius: 1.5rem;
+            /* 法则3: 三维法线物理厚度 (极锐利的迎光白边 + 底部厚度暗角) */
+            box-shadow: 
+                inset 0 1.5px 1.5px rgba(255, 255, 255, 0.4),  /* 顶部液态高光 */
+                inset 0 -1px 3px rgba(0, 0, 0, 0.4),      /* 底部物理厚度暗角 */
+                0 16px 32px rgba(0, 0, 0, 0.5);           /* 空间底层投影 */
+            position: relative;
+            overflow: hidden;
+            /* 法则1: 顶层内容分层 */
+            z-index: 10;
+            transform: translateZ(0); 
+        }
+        
+        /* 法则6 & 7: 边缘色散与高光流动 */
+        .glass-card::before {
+            content: ''; 
+            position: absolute; 
+            inset: 0; 
+            border-radius: inherit;
+            padding: 1px; /* 极薄的液态表面张力边缘 */
+            background: linear-gradient(
+                135deg, 
+                rgba(255, 255, 255, 0.7) 0%,   /* 左上极强高光 */
+                rgba(255, 255, 255, 0.0) 30%, 
+                transparent 50%, 
+                rgba(16, 185, 129, 0.3) 100%   /* 右下融入主题色(翡翠绿)的折射 */
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; 
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* ★ 新增：液态高光小标签 (替代原有的扁平半透明磨砂色块) */
+        .liquid-pill {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+            backdrop-filter: blur(8px) saturate(200%);
+            -webkit-backdrop-filter: blur(8px) saturate(200%);
+            /* 精密的三维水滴阴影 */
+            box-shadow: 
+                inset 0 1px 1.5px rgba(255, 255, 255, 0.5), /* 顶部反光 */
+                inset 0 -1px 1px rgba(0, 0, 0, 0.1),        /* 底部暗角 */
+                0 4px 12px rgba(0, 0, 0, 0.1);              /* 水滴投影 */
+            position: relative;
+            overflow: hidden;
+            border: none !important; /* 强制覆盖 Tailwind 边框 */
+        }
+        /* 模拟水滴/玻璃球内部的反光弧面 */
+        .liquid-pill::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 15%; width: 70%; height: 40%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.35), transparent);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* 法则5补充: 内部流体漫反射层 */
+        .glass-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 降级保护与滚动视差 */
+        .reveal-node {
+            opacity: 1; 
+            transform: translateY(0);
+            transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .reveal-pending {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+        .reveal-active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Jiejoe 悬挂弹簧动效 */
+        @keyframes spring-dangle {
+            0% { transform: rotate(0deg); }
+            20% { transform: rotate(15deg); }
+            40% { transform: rotate(-10deg); }
+            60% { transform: rotate(5deg); }
+            80% { transform: rotate(-2deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .spring-hover:hover {
+            animation: spring-dangle 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            transform-origin: top center;
+        }
+    </style>
+</head>
+<body class="relative overflow-x-hidden selection:bg-emerald-500 selection:text-black bg-[#020408]">
+
+    <script>
+        window.handleImageFallback = function(img) {
+            img.onerror = null;
+            img.src = 'https://placehold.co/800x500/10b981/ffffff?text=Image+Not+Found';
+        };
+    </script>
+
+    <!-- 1. 全局深邃视频背景 (GPU加速，不发灰，深邃质感) -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <video 
+            autoPlay loop muted playsInline preload="auto"
+            class="w-full h-full object-cover transform-gpu opacity-80 contrast-125 saturate-150"
+            style="will-change: transform, opacity;"
+            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4" 
+        ></video>
+        <!-- 四周暗角，中心完全通透 -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#020408_95%)] opacity-95"></div>
+    </div>
+
+    <!-- 2. 紫色闪电雷击交互层 (默认完全透明) -->
+    <canvas id="lightning-canvas" class="fixed inset-0 z-[1] pointer-events-none opacity-0 transition-opacity duration-1000 ease-out mix-blend-screen"></canvas>
+
+    <!-- 3. 彩带粒子层 -->
+    <canvas id="confetti-canvas" class="fixed inset-0 z-[100] pointer-events-none"></canvas>
+
+    <!-- 顶部进度条与导航 -->
+    <div class="fixed top-0 left-0 w-full h-[3px] z-[110] bg-black/50">
+        <div id="scroll-progress" class="h-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-green-500 w-0 transition-all duration-100 ease-out shadow-[0_0_10px_#34d399]"></div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[120] bg-emerald-500 text-black font-bold px-8 py-4 rounded-full shadow-[0_0_30px_rgba(16,185,129,0.5)] flex items-center gap-3 opacity-0 pointer-events-none transition-all duration-300 translate-y-6 font-mono text-sm tracking-wide">
+        <i class="fa-solid fa-check-circle text-lg"></i>
+        <span id="toast-msg">提示信息</span>
+    </div>
+
+    <nav class="fixed top-0 left-0 w-full z-50 border-b border-white/5 bg-[#020408]/50 backdrop-blur-xl px-6 lg:px-12 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-400 flex items-center justify-center font-black text-black text-xl shadow-[0_0_15px_rgba(52,211,153,0.4)]">
+                HK
+            </div>
+            <div class="hidden sm:block">
+                <div class="font-bold tracking-wider text-sm text-white">HU KUN</div>
+                <div class="text-xs text-neutral-400 font-mono tracking-wide mt-0.5">AI NATIVE DEVELOPER</div>
+            </div>
+        </div>
+        <div class="hidden md:flex items-center gap-10 text-xs font-mono tracking-widest text-neutral-300">
+            <a href="#projects" class="hover:text-emerald-400 transition-colors">01 // PROJECTS</a>
+            <a href="#certs" class="hover:text-emerald-400 transition-colors">02 // CREDENTIALS</a>
+            <a href="#ailab" class="hover:text-emerald-400 transition-colors">03 // AI LAB</a>
+            <a href="#contact" class="hover:text-emerald-400 transition-colors">04 // CONTACT</a>
+        </div>
+        <button onclick="openAllCertsModal()" class="px-6 py-2.5 rounded-full liquid-pill text-emerald-400 hover:text-white text-xs font-mono font-bold tracking-wider transition-all duration-300">
+            查看 18 项资质 ➔
+        </button>
+    </nav>
+
+    <main class="relative z-10 pb-20">
+        
+        <!-- Section 1: 首屏 -->
+        <section class="min-h-screen flex items-center justify-center pt-32 pb-24 px-6 max-w-7xl mx-auto">
+            <div class="grid lg:grid-cols-12 gap-16 lg:gap-20 items-center w-full">
+                <!-- 左侧信息 -->
+                <div class="lg:col-span-7 space-y-10">
+                    <!-- 替换为液态标签 -->
+                    <div class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full liquid-pill text-emerald-400 text-xs font-mono tracking-wide">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span>电子科技大学成都学院 · 计算机科学与技术</span>
+                    </div>
+
+                    <h1 class="text-5xl lg:text-7xl font-black tracking-tight leading-[1.1] text-white">
+                        AI NATIVE <br />
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-cyan-400 to-green-300 drop-shadow-[0_0_30px_rgba(52,211,153,0.3)]">
+                            原生全栈开发者
+                        </span>
+                    </h1>
+
+                    <!-- 打字机 -->
+                    <div class="h-10 flex items-center text-lg lg:text-2xl font-mono text-neutral-200 font-semibold tracking-wide">
+                        <span class="text-emerald-400 mr-3">›</span>
+                        <span id="typewriter-text"></span>
+                        <span class="inline-block w-2.5 h-6 bg-emerald-400 ml-2 animate-pulse shadow-[0_0_10px_#34d399]"></span>
+                    </div>
+
+                    <!-- 宽泛排版：拉大行高和字距 -->
+                    <p class="text-neutral-300 text-base leading-[1.8] tracking-wide max-w-2xl">
+                        以 AI 原生思维为研发引擎，深入探索大模型工具链、Python / Web 全栈编程与 Canvas 图形交互。拥有 <strong class="text-emerald-400 font-bold">18 项大模型与开发官方权威认证</strong>（阿里云·达摩院 × 14、科大讯飞 × 4），崇尚“先完成，再完美”的极客实践哲学。
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-5 pt-4">
+                        <a href="#projects" class="px-8 py-4 rounded-xl bg-emerald-500 text-black font-bold text-sm tracking-wider hover:bg-emerald-400 transition-all duration-300 shadow-[0_0_24px_rgba(52,211,153,0.4)] flex items-center gap-3">
+                            <i class="fa-solid fa-code"></i> 探索精选重点项目
+                        </a>
+                        <a href="https://github.com/15949603091" target="_blank" class="px-8 py-4 rounded-xl glass-card hover:bg-white/10 text-white font-mono text-sm tracking-wider transition-all duration-300 flex items-center gap-3">
+                            <i class="fa-brands fa-github text-xl"></i> GitHub
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 右侧极客面板 (液态玻璃卡片) -->
+                <div class="lg:col-span-5 reveal-node">
+                    <div class="p-10 sm:p-12 glass-card relative overflow-hidden space-y-10">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-6">
+                            <div class="flex items-center gap-3">
+                                <span class="w-3.5 h-3.5 rounded-full bg-red-500/80"></span>
+                                <span class="w-3.5 h-3.5 rounded-full bg-yellow-500/80"></span>
+                                <span class="w-3.5 h-3.5 rounded-full bg-green-500/80"></span>
+                            </div>
+                            <span class="text-xs font-mono text-emerald-400 font-bold tracking-widest">HUD // ACTIVE</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-8">
+                            <div class="p-6 rounded-2xl bg-black/40 border border-white/5">
+                                <div class="text-5xl font-black text-emerald-400 font-mono">18<span class="text-sm font-normal text-neutral-400">项</span></div>
+                                <div class="text-xs text-neutral-400 mt-4 tracking-wide leading-[1.8]">官方真实权威认证</div>
+                            </div>
+                            <div class="p-6 rounded-2xl bg-black/40 border border-white/5">
+                                <div class="text-5xl font-black text-cyan-400 font-mono">3<span class="text-sm font-normal text-neutral-400">个</span></div>
+                                <div class="text-xs text-neutral-400 mt-4 tracking-wide leading-[1.8]">核心全栈落地项目</div>
+                            </div>
+                        </div>
+
+                        <button onclick="copyText('15949603091', '微信号', event)" class="w-full py-5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border border-emerald-500/30 text-sm font-mono font-bold tracking-wider transition-all duration-300 flex items-center justify-center gap-3">
+                            <i class="fa-brands fa-weixin text-lg"></i> 复制微信号 (15949603091)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: 重点项目实战 (精确还原截图文案) -->
+        <section id="projects" class="py-32 px-6 max-w-7xl mx-auto border-t border-white/5">
+            <div class="mb-24">
+                <div class="text-xs font-mono text-emerald-400 tracking-widest uppercase mb-4">PORTFOLIO // 01</div>
+                <h2 class="text-4xl lg:text-5xl font-black text-white tracking-tight">精选项目实战落地</h2>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-12">
+                <!-- 项目 1 -->
+                <div onclick="openProjectModal(0)" class="p-10 sm:p-12 glass-card space-y-8 cursor-pointer reveal-node group transition-all">
+                    <div class="flex items-center justify-between">
+                        <span class="text-5xl font-black font-mono text-emerald-400/20 group-hover:text-emerald-400 transition-colors">01</span>
+                        <span class="text-xs font-mono text-neutral-400">2026.03</span>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-white group-hover:text-emerald-400 transition-colors tracking-wide leading-[1.5]">DYNAMIC VISUAL WEBSITE</h3>
+                        <p class="text-sm text-neutral-400 mt-3 tracking-wide">2026.03 落地作品</p>
+                    </div>
+                    <p class="text-base text-neutral-300 leading-[1.8] tracking-wide">
+                        Gemini + 动态视觉交互体系实战落地。利用原生 Canvas 粒子系统、高对比度暗黑极客美学构建沉浸式叙事主页。
+                    </p>
+                    <div class="pt-6 border-t border-white/10 text-xs font-mono text-emerald-400 tracking-wide font-bold flex justify-between items-center group-hover:translate-x-1 transition-transform">
+                        查看架构解构与模块 ➔ <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </div>
+                </div>
+
+                <!-- 项目 2 -->
+                <div onclick="openProjectModal(1)" class="p-10 sm:p-12 glass-card space-y-8 cursor-pointer reveal-node group transition-all">
+                    <div class="flex items-center justify-between">
+                        <span class="text-5xl font-black font-mono text-cyan-400/20 group-hover:text-cyan-400 transition-colors">02</span>
+                        <span class="text-xs font-mono text-neutral-400">2025.09</span>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors tracking-wide leading-[1.5]">AUTOMATED WORKFLOW</h3>
+                        <p class="text-sm text-neutral-400 mt-3 tracking-wide">2025.09 落地作品</p>
+                    </div>
+                    <p class="text-base text-neutral-300 leading-[1.8] tracking-wide">
+                        自动化工作流 —— 每日自动化抓取信息，构建闭环生产力工具链与 GitHub 协同自动化机制，提高 10x 学习效率。
+                    </p>
+                    <div class="pt-6 border-t border-white/10 text-xs font-mono text-cyan-400 tracking-wide font-bold flex justify-between items-center group-hover:translate-x-1 transition-transform">
+                        查看架构解构与模块 ➔ <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </div>
+                </div>
+
+                <!-- 项目 3 -->
+                <div onclick="openProjectModal(2)" class="p-10 sm:p-12 glass-card space-y-8 cursor-pointer reveal-node group transition-all">
+                    <div class="flex items-center justify-between">
+                        <span class="text-5xl font-black font-mono text-purple-400/20 group-hover:text-purple-400 transition-colors">03</span>
+                        <span class="text-xs font-mono text-neutral-400">2025.12</span>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors tracking-wide leading-[1.5]">PERSONAL AI EMPLOYEE</h3>
+                        <p class="text-sm text-neutral-400 mt-3 tracking-wide">2025.12 落地作品</p>
+                    </div>
+                    <p class="text-base text-neutral-300 leading-[1.8] tracking-wide">
+                        系统提示词工程 + 固定上下文编排 = 专属智能体助手，涵盖专业课复习指导与自动化代码重构审核。
+                    </p>
+                    <div class="pt-6 border-t border-white/10 text-xs font-mono text-purple-400 tracking-wide font-bold flex justify-between items-center group-hover:translate-x-1 transition-transform">
+                        查看架构解构与模块 ➔ <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Jiejoe 全局目光追焦眼球 -->
+        <section class="py-32 px-6 max-w-4xl mx-auto text-center relative overflow-hidden border-t border-white/5 reveal-node">
+            <div class="text-xs font-mono text-emerald-400 tracking-widest uppercase mb-6">INTERACTIVE VISION // 02</div>
+            <h2 class="text-4xl lg:text-5xl font-black text-white tracking-tight mb-20">
+                视 觉 至 上 · 光 标 追 焦
+            </h2>
+
+            <div id="eye-container" class="w-64 h-64 mx-auto rounded-full bg-white relative flex items-center justify-center shadow-[0_0_80px_rgba(52,211,153,0.2)] border-[6px] border-emerald-400 transition-transform duration-100">
+                <div class="absolute inset-0 rounded-full border border-red-500/20 pointer-events-none"></div>
+                <div id="pupil" class="w-28 h-28 rounded-full bg-[#020408] relative flex items-center justify-center transition-transform duration-75 ease-out shadow-inner">
+                    <div class="w-16 h-16 rounded-full bg-emerald-400 flex items-center justify-center">
+                        <div class="w-5 h-5 rounded-full bg-white -translate-y-3 -translate-x-3 shadow-[0_0_10px_#fff]"></div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-sm font-mono text-neutral-400 mt-12 tracking-widest leading-[1.8]">
+                移动光标测试全局眼球几何角追踪与物理视差算法
+            </p>
+        </section>
+
+        <!-- Section 4: 18项证书墙展示 -->
+        <section id="certs" class="py-32 px-6 max-w-7xl mx-auto border-t border-white/5 reveal-node">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+                <div>
+                    <div class="text-xs font-mono text-emerald-400 tracking-widest uppercase mb-4">CREDENTIALS // 03</div>
+                    <h2 class="text-4xl lg:text-5xl font-black text-white tracking-tight">18 项大模型与开发官方认证</h2>
+                </div>
+                <button onclick="openAllCertsModal(); triggerConfetti(event)" class="px-8 py-4 rounded-full liquid-pill text-emerald-400 hover:text-white font-mono text-sm font-bold tracking-wider transition-all duration-300">
+                    打开全屏 18 项证书画廊大厅 ➔
+                </button>
+            </div>
+
+            <!-- 取 4 张代表作展示，使用 liquid-pill 作为透明标签 -->
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="p-10 sm:p-12 glass-card cursor-pointer hover:-translate-y-2 transition-all group" onclick="openAllCertsModal()">
+                    <span class="px-4 py-1.5 liquid-pill text-emerald-400 text-xs font-mono rounded-full">阿里云 / 达摩院</span>
+                    <h4 class="mt-8 font-bold text-white text-lg group-hover:text-emerald-400 transition-colors leading-[1.8]">人工智能训练师 (高级)</h4>
+                    <p class="text-xs text-neutral-400 mt-4 font-mono">AIT260719154627000116</p>
+                </div>
+                <div class="p-10 sm:p-12 glass-card cursor-pointer hover:-translate-y-2 transition-all group" onclick="openAllCertsModal()">
+                    <span class="px-4 py-1.5 liquid-pill text-cyan-400 text-xs font-mono rounded-full">科大讯飞</span>
+                    <h4 class="mt-8 font-bold text-white text-lg group-hover:text-cyan-400 transition-colors leading-[1.8]">智能体工程师认证</h4>
+                    <p class="text-xs text-neutral-400 mt-4 font-mono">XFAGENT973061</p>
+                </div>
+                <div class="p-10 sm:p-12 glass-card cursor-pointer hover:-translate-y-2 transition-all group" onclick="openAllCertsModal()">
+                    <span class="px-4 py-1.5 liquid-pill text-purple-400 text-xs font-mono rounded-full">阿里云</span>
+                    <h4 class="mt-8 font-bold text-white text-lg group-hover:text-purple-400 transition-colors leading-[1.8]">Spring AI 应用开发</h4>
+                    <p class="text-xs text-neutral-400 mt-4 font-mono">CLDM09260702736841</p>
+                </div>
+                <div class="p-10 sm:p-12 glass-card cursor-pointer hover:-translate-y-2 transition-all group" onclick="openAllCertsModal()">
+                    <span class="px-4 py-1.5 liquid-pill text-blue-400 text-xs font-mono rounded-full">科大讯飞</span>
+                    <h4 class="mt-8 font-bold text-white text-lg group-hover:text-blue-400 transition-colors leading-[1.8]">RAG 工程师认证</h4>
+                    <p class="text-xs text-neutral-400 mt-4 font-mono">XFRAG745928</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: AI 架构蓝图工坊 (按键触发闪电) -->
+        <section id="ailab" class="py-32 px-6 max-w-5xl mx-auto border-t border-white/5 reveal-node relative z-10">
+            <div class="text-center mb-20">
+                <div class="text-xs font-mono text-emerald-400 tracking-widest uppercase mb-4">BLUEPRINT LAB // 04</div>
+                <h2 class="text-4xl lg:text-5xl font-black text-white tracking-tight">AI 架构原型规划工坊</h2>
+                <p class="mt-8 text-neutral-400 text-base tracking-wide leading-[1.8] max-w-2xl mx-auto">
+                    体验强大的系统架构设计能力。输入任意业务设想，点击生成，见证引擎通电运转与高亮雷击爆闪。
+                </p>
+            </div>
+
+            <div class="p-10 sm:p-14 glass-card shadow-2xl relative">
+                <div class="space-y-8">
+                    <label class="text-sm font-mono text-emerald-400 font-bold tracking-wider flex items-center gap-3">
+                        <i class="fa-solid fa-robot text-lg"></i> 业务构想输入终端：
+                    </label>
+                    <div class="flex flex-col sm:flex-row gap-6">
+                        <input type="text" id="bp-input" class="flex-1 bg-black/50 border border-white/20 focus:border-emerald-400 p-6 rounded-xl text-base font-mono text-white outline-none transition-all placeholder:text-neutral-600 shadow-inner" value="构建一个基于 RAG 检索增强的企业级智能客服知识库系统" />
+                        <button onclick="generateBlueprint()" id="bp-btn" class="px-10 py-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-base tracking-wider font-mono transition-all duration-300 flex items-center justify-center gap-3 whitespace-nowrap shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                            <i class="fa-solid fa-bolt"></i> <span id="bp-btn-text">生成技术蓝图</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="bp-result" class="hidden mt-10 p-10 rounded-2xl bg-black/80 border border-emerald-500/40 text-emerald-300 font-mono text-base whitespace-pre-wrap leading-[1.8] tracking-wide shadow-inner"></div>
+            </div>
+        </section>
+
+        <!-- Section 6: CONTACT ME 悬挂交互与全部联系方式 (完美保留) -->
+        <section id="contact" class="py-32 px-6 max-w-5xl mx-auto text-center border-t border-white/5 relative reveal-node">
+            <div class="text-xs font-mono text-emerald-400 tracking-widest uppercase mb-10">GET IN TOUCH // 05</div>
+            
+            <div class="relative inline-block my-16 select-none">
+                <h2 class="text-7xl sm:text-9xl font-black text-white tracking-tighter uppercase drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                    CONTACT ME
+                </h2>
+                <!-- Jiejoe 悬挂电话 -->
+                <div onclick="copyText('15949603091', '电话号码', event)" class="absolute left-1/2 -bottom-24 -translate-x-1/2 cursor-pointer group spring-hover z-10">
+                    <div class="w-1 h-14 mx-auto border-l-2 border-dashed border-emerald-400 animate-pulse"></div>
+                    <div class="w-20 h-20 rounded-3xl bg-emerald-400 text-black flex items-center justify-center shadow-[0_0_40px_#34d399] transition-all">
+                        <i class="fa-solid fa-phone text-3xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 【彻底恢复并排的：邮箱、QQ、微信、地址】全部应用玻璃卡片质感 -->
+            <div class="pt-32 flex flex-wrap items-center justify-center gap-6">
+                <!-- 邮箱 -->
+                <button onclick="copyText('15949603091@163.com', '网易邮箱', event)" class="px-8 py-5 rounded-2xl glass-card hover:border-emerald-500 text-base font-mono text-white transition-all flex items-center gap-3">
+                    <i class="fa-solid fa-envelope text-emerald-400"></i> 15949603091@163.com
+                </button>
+                <!-- QQ -->
+                <button onclick="copyText('15949603091', 'QQ号码', event)" class="px-8 py-5 rounded-2xl glass-card hover:border-blue-400 text-base font-mono text-white transition-all flex items-center gap-3">
+                    <i class="fa-brands fa-qq text-blue-400"></i> 15949603091
+                </button>
+                <!-- 微信 -->
+                <button onclick="copyText('15949603091', '微信号码', event)" class="px-8 py-5 rounded-2xl glass-card hover:border-green-400 text-base font-mono text-white transition-all flex items-center gap-3">
+                    <i class="fa-brands fa-weixin text-green-400"></i> 15949603091
+                </button>
+                <!-- 地址 -->
+                <div class="px-8 py-5 rounded-2xl glass-card border border-white/10 text-base font-mono text-neutral-400 flex items-center gap-3">
+                    <i class="fa-solid fa-location-dot text-cyan-400"></i> 中国 · 成都
+                </div>
+            </div>
+
+            <footer class="mt-40 pt-10 border-t border-white/5 text-xs font-mono text-neutral-500 flex flex-col sm:flex-row items-center justify-between gap-4 tracking-wider">
+                <div>© 2026 HU KUN · ALL RIGHTS RESERVED</div>
+                <div class="text-emerald-500 font-bold">DESIGNED WITH AI NATIVE VIBE</div>
+            </footer>
+        </section>
+
+    </main>
+
+    <!-- ================= 弹窗系统 ================= -->
+    
+    <!-- 18 项证书大厅 -->
+    <div id="certs-modal" class="fixed inset-0 z-[200] bg-black/90 backdrop-blur-2xl hidden items-center justify-center p-4 lg:p-8 opacity-0 transition-opacity duration-300">
+        <div class="glass-card rounded-[2rem] max-w-7xl w-full max-h-[90vh] flex flex-col shadow-2xl relative scale-95 transition-transform duration-300" id="certs-modal-content">
+            <div class="p-8 sm:p-10 border-b border-white/10 flex items-center justify-between flex-shrink-0 bg-white/[0.02]">
+                <div>
+                    <h3 class="text-3xl font-black text-white flex items-center gap-4 tracking-wide">
+                        <i class="fa-solid fa-shield-halved text-emerald-400"></i> 18 项官方权威技能与资质
+                    </h3>
+                    <p class="text-base font-mono text-neutral-400 mt-4 tracking-wide leading-[1.8]">包含阿里云达摩院 14 项、科大讯飞 4 项核心认证。</p>
+                </div>
+                <button onclick="closeAllCertsModal()" class="w-14 h-14 rounded-full liquid-pill hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-8 sm:p-10 overflow-y-auto flex-1">
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8" id="certs-grid-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 项目架构详情弹窗 -->
+    <div id="project-modal" class="fixed inset-0 z-[210] bg-black/80 backdrop-blur-xl hidden items-center justify-center p-4 lg:p-8 opacity-0 transition-opacity duration-300">
+        <div class="glass-card rounded-[2rem] max-w-3xl w-full p-10 sm:p-14 relative space-y-10 scale-95 transition-transform duration-300" id="proj-modal-content">
+            <button onclick="closeProjectModal()" class="absolute top-10 right-10 w-14 h-14 rounded-full liquid-pill text-neutral-400 hover:text-white flex items-center justify-center">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+            <div class="space-y-6">
+                <span id="proj-badge" class="px-5 py-2.5 rounded-full liquid-pill text-emerald-400 font-mono text-sm tracking-wider font-bold">PROJECT 01</span>
+                <h3 id="proj-title" class="text-4xl font-black text-white mt-4 tracking-wide leading-[1.5]">项目名称</h3>
+                <p id="proj-subtitle" class="text-base text-neutral-400 font-mono tracking-wide leading-[1.8]">副标题描述</p>
+            </div>
+            <p id="proj-desc" class="text-base text-neutral-300 leading-[1.8] tracking-wide"></p>
+            <div class="space-y-6 p-10 rounded-2xl bg-black/40 border border-white/5 shadow-inner">
+                <div class="text-base font-mono text-emerald-400 font-bold tracking-wide flex items-center gap-3"><i class="fa-solid fa-microchip"></i> 核心架构与技术亮点：</div>
+                <ul id="proj-highlights" class="space-y-5 text-base text-neutral-300 font-mono leading-[1.8] tracking-wide"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 原生 JavaScript 逻辑 ================= -->
+    <script>
+        // 【100% 还原用户提供的 18 项真实证书数据】
+        const certData = [
+            { id: '01', title: '人工智能训练师证书（初级）', org: '阿里云 Apsara Clouder / 达摩院', code: 'AIT260719102250000110', tag: '阿里云' },
+            { id: '02', title: '人工智能训练师证书（高级）', org: '阿里云 Apsara Clouder / 达摩院', code: 'AIT260719154627000116', tag: '阿里云' },
+            { id: '03', title: '大模型 Clouder 认证：基于通义灵码实现高效 AI 编码', org: '阿里云', code: 'CLDM07260802753341', tag: '阿里云' },
+            { id: '04', title: '大模型 Clouder 认证：Spring AI 应用开发（入门）', org: '阿里云', code: 'CLDM09260702736841', tag: '阿里云' },
+            { id: '05', title: '人工智能 Clouder 认证：VISION 人工智能设计（进阶）', org: '阿里云', code: 'CLDM08260702736776', tag: '阿里云' },
+            { id: '06', title: '云原生数据库 Clouder：PolarDB 分布式版 V2.0', org: '阿里云', code: 'CLDB09260702736777', tag: '阿里云' },
+            { id: '07', title: '云原生数据库 Clouder：PolarDB 分布式版 V2.0', org: '阿里云', code: 'CLDB09260702736777', tag: '阿里云' },
+            { id: '08', title: '基于 PAI ArtLab 的 AIGC 设计基础', org: '阿里云', code: 'CLDM05260702735586', tag: '阿里云' },
+            { id: '09', title: '基于 PAI ArtLab 的 AIGC 设计基础', org: '阿里云', code: 'CLDM05260702735586', tag: '阿里云' },
+            { id: '10', title: '大模型 Clouder 认证：RAG 应用构建及优化', org: '阿里云', code: 'CLDM04260702736846', tag: '阿里云' },
+            { id: '11', title: '大模型 Clouder 认证：RAG 应用构建及优化', org: '阿里云', code: 'CLDM04260702736842', tag: '阿里云' },
+            { id: '12', title: '大模型 Clouder 认证：基于百炼平台构建智能体应用', org: '阿里云', code: 'CLDM02260702736843', tag: '阿里云' },
+            { id: '13', title: '大模型 Clouder 认证：基于百炼平台构建智能体应用', org: '阿里云', code: 'CLDM02260702736843', tag: '阿里云' },
+            { id: '14', title: '大模型 Clouder 认证：基于百炼平台构建智能体应用', org: '阿里云', code: 'CLDM02260702736847', tag: '阿里云' },
+            { id: '15', title: 'Prompt 工程师认证', org: '科大讯飞 AI 大学堂', code: 'XFPROMPT415126', tag: '科大讯飞' },
+            { id: '16', title: '智能体工程师认证', org: '科大讯飞 AI 大学堂', code: 'XFAGENT973061', tag: '科大讯飞' },
+            { id: '17', title: 'RAG 工程师认证', org: '科大讯飞 AI 大学堂', code: 'XFRAG745928', tag: '科大讯飞' },
+            { id: '18', title: '微调工程师认证', org: '科大讯飞 AI 大学堂', code: 'XFTUNING712071', tag: '科大讯飞' }
+        ];
+
+        // 【100% 还原用户截图中提供的 3 大实战项目文案】
+        const projectData = [
+            {
+                id: '01', title: 'DYNAMIC VISUAL WEBSITE', subtitle: '2026.03 落地作品',
+                desc: 'Gemini + 动态视觉交互体系实战落地。利用原生 Canvas 粒子系统、高对比度暗黑极客美学构建沉浸式叙事主页。',
+                highlights: ['原生 Canvas 粒子动效开发', 'Apple Liquid Glass 质感还原', '响应式布局与极客视觉设计']
+            },
+            {
+                id: '02', title: 'AUTOMATED WORKFLOW', subtitle: '2025.09 落地作品',
+                desc: '自动化工作流 —— 每日自动化抓取信息，构建闭环生产力工具链与 GitHub 协同自动化机制，提高 10x 学习效率。',
+                highlights: ['多数据源自动化抓取', '大模型内容提炼与结构化', 'GitHub Actions / Webhook 自动推送机制']
+            },
+            {
+                id: '03', title: 'PERSONAL AI EMPLOYEE', subtitle: '2025.12 落地作品',
+                desc: '系统提示词工程 + 固定上下文编排 = 专属智能体助手，涵盖专业课复习指导与自动化代码重构审核。',
+                highlights: ['系统级 Prompt Engineering 实战', '专业课知识库 RAG 融合', '代码审查与重构自动化']
+            }
+        ];
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('opacity-0', 'translate-y-6', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-6', 'pointer-events-none');
+            }, 2500);
+        }
+
+        function copyText(text, label, event) {
+            if (event) triggerConfetti(event);
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`✓ 成功复制 ${label}: ${text}`);
+            });
+        }
+
+        function triggerConfetti(e) {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const particles = [];
+            const colors = ['#10b981', '#34d399', '#06b6d4', '#8b5cf6', '#f59e0b', '#ffffff'];
+            const startX = e.clientX;
+            const startY = e.clientY;
+
+            for (let i = 0; i < 60; i++) {
+                particles.push({
+                    x: startX, y: startY,
+                    vx: (Math.random() - 0.5) * 18,
+                    vy: (Math.random() - 1) * 18 - 5,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 1
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+                for (let p of particles) {
+                    if (p.life <= 0) continue;
+                    active = true;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.4;
+                    p.life -= 0.015;
+                    ctx.globalAlpha = Math.max(0, p.life);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                }
+                if (active) requestAnimationFrame(animate);
+                else ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            animate();
+        }
+
+        function openAllCertsModal() {
+            const modal = document.getElementById('certs-modal');
+            const content = document.getElementById('certs-modal-content');
+            const container = document.getElementById('certs-grid-container');
+            
+            if (container.innerHTML === '') {
+                certData.forEach(cert => {
+                    container.innerHTML += `
+                        <div class="p-8 rounded-2xl glass-card transition-all cursor-pointer group" onclick="copyText('${cert.code}', '官方证书编号', event)">
+                            <div class="flex items-center justify-between mb-5">
+                                <span class="px-4 py-1.5 rounded-full liquid-pill text-emerald-400 text-xs font-mono tracking-wider">${cert.tag}</span>
+                                <i class="fa-solid fa-copy text-neutral-500 group-hover:text-emerald-400 transition-colors"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-[1.8]">${cert.title}</h4>
+                            <p class="text-sm text-neutral-400 font-mono mt-4 leading-[1.8]">${cert.org}</p>
+                            <div class="mt-6 pt-5 border-t border-white/10 text-sm font-mono text-neutral-500">ID: <span class="text-emerald-400/70 group-hover:text-emerald-400">${cert.code}</span></div>
+                        </div>
+                    `;
+                });
+            }
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeAllCertsModal() {
+            const modal = document.getElementById('certs-modal');
+            const content = document.getElementById('certs-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function openProjectModal(index) {
+            const data = projectData[index];
+            document.getElementById('proj-badge').innerText = `PROJECT ${data.id}`;
+            document.getElementById('proj-title').innerText = data.title;
+            document.getElementById('proj-subtitle').innerText = data.subtitle;
+            document.getElementById('proj-desc').innerText = data.desc;
+            
+            const list = document.getElementById('proj-highlights');
+            list.innerHTML = '';
+            data.highlights.forEach(h => {
+                list.innerHTML += `<li class="flex items-start gap-4"><i class="fa-solid fa-check text-emerald-400 mt-1.5"></i><span>${h}</span></li>`;
+            });
+
+            const modal = document.getElementById('project-modal');
+            const content = document.getElementById('proj-modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeProjectModal() {
+            const modal = document.getElementById('project-modal');
+            const content = document.getElementById('proj-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.onload = () => {
+            // 进度条
+            window.addEventListener('scroll', () => {
+                let winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+                let height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                let scrolled = (winScroll / height) * 100;
+                document.getElementById('scroll-progress').style.width = scrolled + "%";
+            });
+
+            // 视差观测
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('reveal-active');
+                        entry.target.classList.remove('reveal-pending');
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+
+            document.querySelectorAll('.reveal-node').forEach(node => {
+                node.classList.add('reveal-pending');
+                observer.observe(node);
+            });
+
+            // 打字机 (严谨 3 秒停留)
+            const phrases = ["数据分析探索者", "全栈开发学习者", "AI应用实践者"];
+            let i = 0, j = 0, isDeleting = false;
+            let textElement = document.getElementById("typewriter-text");
+            
+            function type() {
+                let currentPhrase = phrases[i];
+                if (isDeleting) {
+                    textElement.innerText = currentPhrase.substring(0, j - 1);
+                    j--;
+                } else {
+                    textElement.innerText = currentPhrase.substring(0, j + 1);
+                    j++;
+                }
+
+                let speed = isDeleting ? 40 : 80;
+                if (!isDeleting && j === currentPhrase.length) {
+                    speed = 3000; // 停留 3 秒
+                    isDeleting = true;
+                } else if (isDeleting && j === 0) {
+                    isDeleting = false;
+                    i = (i + 1) % phrases.length;
+                    speed = 500;
+                }
+                setTimeout(type, speed);
+            }
+            type();
+        };
+
+        // 眼睛跟随
+        document.addEventListener('mousemove', (e) => {
+            const eye = document.getElementById('eye-container');
+            if(!eye) return;
+            const pupil = document.getElementById('pupil');
+            const rect = eye.getBoundingClientRect();
+            
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            const angle = Math.atan2(e.clientY - y, e.clientX - x);
+            const distance = Math.min(Math.hypot(e.clientX - x, e.clientY - y) / 10, 25); 
+            
+            pupil.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
+        });
+
+        // ================= WebGL 强雷电着色器 (按键触发) =================
+        let lightningClickTime = -999; 
+        function initLightningWebGL() {
+            const canvas = document.getElementById('lightning-canvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) return;
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            const vs = `attribute vec2 position; void main() { gl_Position = vec4(position, 0.0, 1.0); }`;
+            const fs = `
+                precision highp float;
+                uniform float u_time;
+                uniform vec2 u_resolution;
+                uniform float u_clickTime;
+
+                float hash(float n) { return fract(sin(n) * 1e4); }
+                float noise(vec2 x) {
+                    vec2 i = floor(x);
+                    vec2 f = fract(x);
+                    float a = hash(i.x + i.y * 57.0);
+                    float b = hash(i.x + 1.0 + i.y * 57.0);
+                    float c = hash(i.x + (i.y + 1.0) * 57.0);
+                    float d = hash(i.x + 1.0 + (i.y + 1.0) * 57.0);
+                    vec2 u = f * f * (3.0 - 2.0 * f);
+                    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+                }
+                
+                // 绘制带分支的雷电
+                float drawLightning(vec2 uv, float t, float offset) {
+                    float wave = noise(vec2(uv.y * 5.0, t * 10.0 + offset)) * 0.4 + noise(vec2(uv.y * 20.0, t * 5.0)) * 0.1;
+                    float dist = abs(uv.x - wave);
+                    return 0.005 / max(dist, 0.001); // 核心亮度
+                }
+
+                void main() {
+                    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+                    uv = uv * 2.0 - 1.0;
+                    uv.x *= u_resolution.x / u_resolution.y;
+
+                    // 计算时间差，控制动画爆发
+                    float timeSinceClick = max(0.0, u_time - u_clickTime);
+                    float intensity = 0.0;
+                    
+                    // 前 0.1 秒极速爆亮，随后在 1 秒内锐减消失
+                    if (timeSinceClick < 0.1) {
+                        intensity = timeSinceClick * 10.0; // 0 to 1
+                    } else if (timeSinceClick < 1.0) {
+                        intensity = 1.0 - (timeSinceClick - 0.1) / 0.9; // 1 to 0
+                    }
+
+                    float t = u_time * 2.0;
+                    
+                    // 主干雷击
+                    float l1 = drawLightning(uv, t, 0.0);
+                    // 细小分支
+                    float l2 = drawLightning(uv + vec2(0.1, 0.0), t * 1.2, 5.0) * 0.5;
+                    float l3 = drawLightning(uv - vec2(0.15, 0.0), t * 0.8, 10.0) * 0.4;
+
+                    float totalLightning = (l1 + l2 + l3) * intensity;
+                    
+                    // 核心是纯白，光晕是深紫
+                    vec3 coreColor = vec3(1.0, 1.0, 1.0);
+                    vec3 glowColor = vec3(0.4, 0.1, 0.9);
+                    
+                    vec3 finalColor = coreColor * totalLightning * 2.0 + glowColor * totalLightning * 4.0;
+                    
+                    // 背景添加整体环境爆闪
+                    finalColor += glowColor * intensity * 0.3;
+
+                    gl_FragColor = vec4(finalColor, intensity);
+                }
+            `;
+
+            function createShader(type, source) {
+                const s = gl.createShader(type);
+                gl.shaderSource(s, source);
+                gl.compileShader(s);
+                return s;
+            }
+
+            const program = gl.createProgram();
+            gl.attachShader(program, createShader(gl.VERTEX_SHADER, vs));
+            gl.attachShader(program, createShader(gl.FRAGMENT_SHADER, fs));
+            gl.linkProgram(program);
+            gl.useProgram(program);
+
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+            const posAttr = gl.getAttribLocation(program, 'position');
+            gl.enableVertexAttribArray(posAttr);
+            gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
+
+            const uTime = gl.getUniformLocation(program, 'u_time');
+            const uRes = gl.getUniformLocation(program, 'u_resolution');
+            const uClick = gl.getUniformLocation(program, 'u_clickTime');
+
+            let startTime = performance.now();
+            function render(time) {
+                const t = (time - startTime) / 1000.0;
+                gl.uniform1f(uTime, t);
+                gl.uniform2f(uRes, canvas.width, canvas.height);
+                gl.uniform1f(uClick, lightningClickTime);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                requestAnimationFrame(render);
+            }
+            requestAnimationFrame(render);
+            
+            return {
+                trigger: function() {
+                    lightningClickTime = (performance.now() - startTime) / 1000.0;
+                }
+            };
+        }
+
+        const webglEngine = initLightningWebGL();
+
+        function generateBlueprint() {
+            const input = document.getElementById('bp-input').value;
+            const btn = document.getElementById('bp-btn');
+            const text = document.getElementById('bp-btn-text');
+            const resultBox = document.getElementById('bp-result');
+            const canvas = document.getElementById('lightning-canvas');
+            
+            if(!input.trim()) { showToast("请输入有效构想！"); return; }
+
+            // 触发强雷击
+            if(webglEngine) webglEngine.trigger();
+            
+            // 确保画布透明度可见，让着色器控制内部的淡出
+            canvas.classList.remove('opacity-0');
+            canvas.classList.add('opacity-100');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            text.innerText = "引擎运转中...";
+            resultBox.classList.add('hidden');
+
+            setTimeout(() => {
+                resultBox.classList.remove('hidden');
+                resultBox.innerHTML = `【系统架构蓝图 · 极速成型】\n--------------------------------------------------\n🎯 目标：${input}\n\n📐 核心架构设计：\n  1. 数据接入层：多源 Markdown/PDF 自动化清洗切分\n  2. 向量计算层：BGE-Large 高维向量化 + 毫秒级语义索引\n  3. 推理服务层：FastAPI 接入通义千问 / 星火大模型\n  4. 防幻觉护栏：内置上下文相关度检测与真实性核验引擎\n\n⚡ 交付指标：P99 延迟 < 850ms | 准确率 > 96.4%`;
+                
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+                text.innerText = "生成技术蓝图";
+                showToast("⚡ AI 架构蓝图已实时生成！");
+                
+                // 2秒后画布重置透明
+                setTimeout(() => {
+                    canvas.classList.remove('opacity-100');
+                    canvas.classList.add('opacity-0');
+                }, 2000);
+
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
