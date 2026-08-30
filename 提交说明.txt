@@ -37,7 +37,7 @@ HTML5 + Tailwind CSS + 原生 JavaScript + Canvas 2D/WebGL + Font Awesome 6
 index.html                     简历主页面（含全部样式与脚本）
 README.md                      项目说明文档
 cert-01.png ~ cert-18.png      18 项官方认证证书原图
-Lumix,Kxrsed - DREAM FUNK.mp3  背景音乐
+Hillsong Young & Free - Wake (Studio).mp3  背景音乐
 提交说明.txt                   本文档
 
 七、原创声明

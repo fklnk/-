@@ -44,7 +44,7 @@ python -m http.server 8000
 ```
 ├── index.html              # 简历主页面（含全部样式与脚本）
 ├── cert-01 ~ 18.png        # 18 项官方认证证书原图
-├── Lumix,Kxrsed - DREAM FUNK.mp3  # 背景音乐
+├── Hillsong Young & Free - Wake (Studio).mp3  # 背景音乐
 └── README.md
 ```
 
