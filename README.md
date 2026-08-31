@@ -43,7 +43,7 @@ python -m http.server 8000
 
 ```
 ├── index.html              # 简历主页面（含全部样式与脚本）
-├── hero.jpg                # 涟漪交互背景图
+├── hero-bg.jpg             # 涟漪交互背景图
 ├── cert-01 ~ 18.png        # 18 项官方认证证书原图
 ├── Hillsong Young & Free - Wake (Studio).mp3  # 背景音乐
 └── README.md
