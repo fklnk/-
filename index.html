@@ -1988,7 +1988,7 @@
             const MAX_WAVES = 100, START_SCALE = 1.5, LIFE_CONSTANT = Math.log(500);
             const cfg = { brushSize: 146, strength: 0.3, swirl: 1, rings: 2.25, spread: 4.2, fade: 3, spacing: 15, clickStrength: 2, grayscale: true };
 
-            const renderer = new Renderer({ alpha: false, antialias: false, dpr: Math.min(window.devicePixelRatio || 1, 2) });
+            const renderer = new Renderer({ alpha: false, antialias: false, dpr: Math.min(window.devicePixelRatio || 1, 1) }); // 背景为虚化图，1x 分辨率足够，像素量省 75%
             const gl = renderer.gl;
             gl.clearColor(0, 0, 0, 1);
             Object.assign(gl.canvas.style, { width: '100%', height: '100%', display: 'block' });
@@ -2191,6 +2191,15 @@
                 renderer.render({ scene: compositeMesh });
             };
             raf = requestAnimationFrame(loop);
+            // 标签页隐藏时暂停渲染，回来即恢复（省 GPU，帧率更稳）
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+                } else if (!raf) {
+                    prevTime = 0;
+                    raf = requestAnimationFrame(loop);
+                }
+            });
         })();
 
         // 15. 背景音乐（Wake · 全页唯一实例；重复触发时新播放直接覆盖旧播放）
