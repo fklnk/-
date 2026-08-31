@@ -1948,19 +1948,19 @@
             }, { passive: true });
         })();
 
-        // 14.8 全局涟漪水波交互背景（OGL · 移植自 React Bits RippleDistortion，纹理源为 hero.jpg）：
+        // 14.8 全局涟漪水波交互背景（OGL · 移植自 React Bits RippleDistortion，纹理源为 hero-bg.jpg）：
         // 光标划过 → 背景产生水波涟漪（笔刷 175 / 强度 0.3 / 涡流 1 / 环纹 2.25）；点击 → 大涟漪
         (function () {
             const mount = document.getElementById('ripple-bg');
             if (!mount || !window.OGL) {
                 // OGL 加载失败兜底：直接以静态图铺满，保证背景永远有画面
-                mount.style.background = 'url(hero.jpg) center/cover no-repeat';
+                mount.style.background = 'url(hero-bg.jpg) center/cover no-repeat';
                 return;
             }
             const { Renderer, Program, Mesh, Geometry, Triangle, Texture, RenderTarget } = OGL;
 
             const MAX_WAVES = 100, START_SCALE = 1.5, LIFE_CONSTANT = Math.log(500);
-            const cfg = { brushSize: 175, strength: 0.3, swirl: 1, rings: 2.25, spread: 5, fade: 3, spacing: 10, clickStrength: 2, grayscale: false };
+            const cfg = { brushSize: 175, strength: 0.3, swirl: 1, rings: 2.25, spread: 5, fade: 3, spacing: 10, clickStrength: 2, grayscale: true };
 
             const renderer = new Renderer({ alpha: false, antialias: false, dpr: Math.min(window.devicePixelRatio || 1, 2) });
             const gl = renderer.gl;
@@ -1980,7 +1980,7 @@
                 imageTexture.image = image;
                 compositeUniforms.uTextureSize.value = [image.naturalWidth || 1, image.naturalHeight || 1];
             };
-            image.src = 'hero.jpg';
+            image.src = 'hero-bg.jpg';
 
             const waveVertex = `
                 precision highp float;
