@@ -73,7 +73,7 @@
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1), --edge-o 0.25s ease;
         }
         /* 法则5补充: 玻璃体内流体高光 (清晰可见的液态漂移) + 光标侧内壁折射泛光
-           第一层为暗色基底：压暗透过玻璃的背景亮部，保证卡片文字可读性 */
+           可读性策略：不压暗背景，改为给卡片文字加投影描边 */
         .glass-card::after,
         .cert-card::after {
             content: '';
@@ -81,7 +81,6 @@
             inset: -20%;
             border-radius: inherit;
             background:
-                linear-gradient(rgba(3, 6, 10, 0.55), rgba(3, 6, 10, 0.55)),
                 radial-gradient(110px circle at var(--mx, 50%) var(--my, -100%),
                     rgba(255, 255, 255, calc(0.12 * var(--edge-o, 0))) 0%, transparent 70%),
                 radial-gradient(ellipse 60% 45% at 20% 15%, rgba(255, 255, 255, 0.14) 0%, transparent 65%),
@@ -89,6 +88,11 @@
             pointer-events: none;
             z-index: -1;
             animation: glass-fluid 6s ease-in-out infinite alternate;
+        }
+        /* 文字可读性：卡片内所有文字加深色投影，在背景亮部依然清晰 */
+        .glass-card,
+        .cert-card {
+            text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.7);
         }
         @keyframes glass-fluid {
             0% { transform: translate(-8%, -6%) rotate(-2deg); }
@@ -289,6 +293,23 @@
             color: #030508 !important;
             border-color: rgba(0, 0, 0, 0.2) !important;
         }
+        /* 白光从中心向两侧展开覆盖整卡 */
+        .ai-sweep-card.active-sweep::before {
+            width: 130%;
+            opacity: 1;
+        }
+        /* 触碰点位旋转弹出的 AI 画框 */
+        #ai-pop {
+            transition: opacity 0.2s ease;
+        }
+        .ai-pop-anim {
+            animation: ai-pop-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes ai-pop-in {
+            0% { opacity: 0; transform: rotate(-16deg) scale(0.4); }
+            60% { opacity: 1; transform: rotate(6deg) scale(1.06); }
+            100% { opacity: 1; transform: rotate(-6deg) scale(1); }
+        }
 
         /* 自定义滚动条 */
         ::-webkit-scrollbar { width: 7px; height: 7px; }
@@ -386,8 +407,6 @@
     <!-- ===================== 全局涟漪水波交互背景 (OGL WebGL · hero 图纹理 + 光标涟漪) ===================== -->
     <div class="fixed inset-0 z-0 pointer-events-none">
         <div id="ripple-bg" class="absolute inset-0"></div>
-        <!-- 全局可读性遮罩：压暗背景亮部，保证卡片文字在任何位置都可读 -->
-        <div class="absolute inset-0 bg-black/45"></div>
         <!-- 四周暗角、中心通透 -->
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#020408_95%)] opacity-95"></div>
     </div>
@@ -399,6 +418,9 @@
     <div id="glass-lens" class="fixed z-[300] pointer-events-none opacity-0 transition-opacity duration-200 hidden rounded-full overflow-hidden">
         <div id="lens-content" class="absolute origin-top-left"></div>
     </div>
+
+    <!-- AI 实战卡片触碰点位旋转弹出的画框（占位图 AI1.png） -->
+    <img id="ai-pop" src="AI1.png" alt="" class="fixed z-[70] pointer-events-none hidden w-64 rounded-2xl shadow-2xl" />
 
     <!-- ===================== 01 HERO 首屏动态叙事区 ===================== -->
     <section id="about" class="min-h-screen pt-32 pb-24 flex items-center justify-center relative px-6 overflow-hidden">
@@ -1266,13 +1288,38 @@
         window.addEventListener('touchstart', (e) => movePupil(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
         window.addEventListener('touchmove', (e) => movePupil(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
 
-        // 8. AI 卡片触碰白光渐变覆盖动效
+        // 8. AI 卡片触碰白光渐变覆盖动效（点击触发；悬停时白光持续，见下方悬停接线）
         function triggerAiCardEffect(card) {
             card.classList.add('active-sweep');
             setTimeout(() => {
-                card.classList.remove('active-sweep');
+                if (!card.matches(':hover')) card.classList.remove('active-sweep'); // 悬停中不提前熄灭
             }, 700);
         }
+
+        // 8.5 AI 卡片悬停：白光反色持续 + 触碰点位旋转弹出 AI1.png 画框
+        (function () {
+            const pop = document.getElementById('ai-pop');
+            const cards = document.querySelectorAll('.ai-sweep-card');
+            if (!pop || !cards.length) return;
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', (e) => {
+                    card.classList.add('active-sweep');
+                    clearTimeout(card._sweepTimer);
+                    pop.style.left = (e.clientX - 48) + 'px';
+                    pop.style.top = (e.clientY - 230) + 'px';
+                    pop.classList.remove('hidden', 'ai-pop-anim');
+                    void pop.offsetWidth; // 重置动画
+                    pop.classList.add('ai-pop-anim');
+                });
+                card.addEventListener('mouseleave', () => {
+                    card._sweepTimer = setTimeout(() => {
+                        if (!card.matches(':hover')) card.classList.remove('active-sweep');
+                    }, 150);
+                    pop.classList.add('hidden');
+                    pop.classList.remove('ai-pop-anim');
+                });
+            });
+        })();
 
         // 9. Canvas Confetti 粒子礼花系统
         const confettiCanvas = document.getElementById('confetti-canvas');
