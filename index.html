@@ -1296,15 +1296,17 @@
             }, 700);
         }
 
-        // 8.5 AI 卡片悬停：白光反色持续 + 触碰点位旋转弹出 AI1.png 画框
+        // 8.5 AI 卡片悬停：白光反色持续 + 触碰点位旋转弹出对应项目图（AI1/AI2/AI3 按卡片位置对应）
         (function () {
             const pop = document.getElementById('ai-pop');
             const cards = document.querySelectorAll('.ai-sweep-card');
             if (!pop || !cards.length) return;
-            cards.forEach(card => {
+            const AI_IMGS = ['AI1.png', 'AI2.png', 'AI3.png']; // 与卡片 01/02/03 顺序对应
+            cards.forEach((card, idx) => {
                 card.addEventListener('mouseenter', (e) => {
                     card.classList.add('active-sweep');
                     clearTimeout(card._sweepTimer);
+                    pop.src = AI_IMGS[idx] || 'AI1.png';
                     pop.style.left = (e.clientX - 48) + 'px';
                     pop.style.top = (e.clientY - 230) + 'px';
                     pop.classList.remove('hidden', 'ai-pop-anim');
