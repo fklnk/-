@@ -379,10 +379,6 @@
                     <i class="fa-solid fa-robot"></i>
                     <span class="hidden xl:inline">对话分身</span>
                 </button>
-                <!-- 汉堡菜单已由横向滚动数字导航替代 -->
-                <button onclick="toggleMobileMenu()" class="hidden p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors">
-                    <i class="fa-solid fa-bars text-lg"></i>
-                </button>
             </div>
         </div>
 
@@ -397,18 +393,6 @@
             <a href="#blueprint-lab" class="whitespace-nowrap hover:text-emerald-400 transition-colors">07//蓝图工坊</a>
             <a href="#contact" class="whitespace-nowrap hover:text-emerald-400 transition-colors">08//联系方式</a>
         </nav>
-
-        <!-- 移动端折叠菜单 -->
-        <div id="mobile-menu" class="hidden lg:hidden px-6 py-4 bg-[#030508]/95 border-b border-white/10 flex flex-col gap-3 text-xs font-mono">
-            <a href="#about" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">01 // 关于我</a>
-            <a href="#profile" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">02 // 技能与档案</a>
-            <a href="#certs" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">03 // 官方证书集</a>
-            <a href="#projects" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">04 // 重点项目实战</a>
-            <a href="#visual" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">05 // 视觉目光追踪</a>
-            <a href="#ai-practice" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">06 // AI 编程实战</a>
-            <a href="#blueprint-lab" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">07 // AI 蓝图工坊</a>
-            <a href="#contact" onclick="toggleMobileMenu()" class="text-neutral-300 hover:text-emerald-400 py-1">08 // 联系交流</a>
-        </div>
     </header>
 
     <!-- ===================== 全局涟漪水波交互背景 (OGL WebGL · hero 图纹理 + 光标涟漪) ===================== -->
@@ -2367,12 +2351,6 @@
             }, { threshold: 0.05 }).observe(canvas);
         }
         initLightPillarGL();
-
-        // 17. 移动端折叠菜单切换
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobile-menu');
-            if (menu) menu.classList.toggle('hidden');
-        }
     </script>
 </body>
 </html>
