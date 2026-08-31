@@ -72,7 +72,8 @@
             transform: translateZ(0);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1), --edge-o 0.25s ease;
         }
-        /* 法则5补充: 玻璃体内流体高光 (清晰可见的液态漂移) + 光标侧内壁折射泛光 */
+        /* 法则5补充: 玻璃体内流体高光 (清晰可见的液态漂移) + 光标侧内壁折射泛光
+           第一层为暗色基底：压暗透过玻璃的背景亮部，保证卡片文字可读性 */
         .glass-card::after,
         .cert-card::after {
             content: '';
@@ -80,6 +81,7 @@
             inset: -20%;
             border-radius: inherit;
             background:
+                linear-gradient(rgba(3, 6, 10, 0.55), rgba(3, 6, 10, 0.55)),
                 radial-gradient(110px circle at var(--mx, 50%) var(--my, -100%),
                     rgba(255, 255, 255, calc(0.12 * var(--edge-o, 0))) 0%, transparent 70%),
                 radial-gradient(ellipse 60% 45% at 20% 15%, rgba(255, 255, 255, 0.14) 0%, transparent 65%),
@@ -384,7 +386,9 @@
     <!-- ===================== 全局涟漪水波交互背景 (OGL WebGL · hero 图纹理 + 光标涟漪) ===================== -->
     <div class="fixed inset-0 z-0 pointer-events-none">
         <div id="ripple-bg" class="absolute inset-0"></div>
-        <!-- 四周暗角、中心通透：保证文字可读性的同时让玻璃卡片处处有光可折 -->
+        <!-- 全局可读性遮罩：压暗背景亮部，保证卡片文字在任何位置都可读 -->
+        <div class="absolute inset-0 bg-black/45"></div>
+        <!-- 四周暗角、中心通透 -->
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#020408_95%)] opacity-95"></div>
     </div>
 
@@ -397,7 +401,7 @@
     </div>
 
     <!-- ===================== 01 HERO 首屏动态叙事区 ===================== -->
-    <section id="about" class="min-h-screen pt-28 pb-16 flex items-center justify-center relative px-6 overflow-hidden">
+    <section id="about" class="min-h-screen pt-32 pb-24 flex items-center justify-center relative px-6 overflow-hidden">
         <div class="max-w-7xl mx-auto w-full grid lg:grid-cols-12 gap-12 items-center relative z-10">
             <!-- 左侧核心叙事与打字机 -->
             <div class="lg:col-span-7 space-y-6">
@@ -407,9 +411,6 @@
                 </div>
 
                 <div class="space-y-3">
-                    <div class="text-emerald-400 font-mono text-xs tracking-[0.25em] font-bold uppercase reveal-node">
-                        // 计算机科学与技术 · 准大一学生
-                    </div>
                     <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-tight reveal-node drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)]">
                         AI 原生<br />
                         <span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-200 to-emerald-400">
@@ -426,7 +427,7 @@
                 </div>
 
                 <p class="text-neutral-300 text-sm sm:text-base leading-relaxed max-w-xl reveal-node">
-                    以 AI 原生思维为研发引擎，深入探索大模型工具链、Python / Web 全栈编程与 Canvas 图形交互。拥有 <strong class="text-emerald-400 font-bold">18 项大模型与开发官方权威认证</strong>（阿里云·达摩院 × 14、科大讯飞 × 4），崇尚“先完成，再完美”的极客实践哲学。
+                    以 AI 原生思维驱动全栈开发，持有 <strong class="text-emerald-400 font-bold">18 项官方权威认证</strong>，崇尚“先完成，再完美”。
                 </p>
 
                 <!-- 行动按钮组 -->
@@ -440,10 +441,6 @@
                         <i class="fa-solid fa-code text-emerald-400"></i>
                         <span>探索精选重点项目</span>
                     </a>
-
-                    <button onclick="copyContact('2700219829@qq.com', '电子邮箱', event)" class="px-4 py-3.5 rounded-xl glass-card text-neutral-300 hover:text-white transition-all text-sm flex items-center gap-2" title="点击复制邮箱">
-                        <i class="fa-solid fa-envelope text-emerald-400"></i>
-                    </button>
 
                     <a href="https://github.com/fklnk" target="_blank" rel="noreferrer" class="p-3.5 rounded-xl glass-card text-neutral-300 hover:text-white transition-all" title="GitHub 个人主页">
                         <i class="fa-brands fa-github text-lg"></i>
@@ -471,22 +468,6 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-white tracking-wide">胡坤 · AI 原生开发工作台</h3>
-                            <p class="text-xs text-neutral-400 mt-1">智能对话 · 原型蓝图工坊 · 18 项权威资质</p>
-                        </div>
-                    </div>
-
-                    <div class="space-y-2 pt-2 border-t border-white/10 font-mono text-xs">
-                        <div class="flex justify-between items-center text-neutral-300 py-1">
-                            <span class="text-neutral-500">// 01 入学规划</span>
-                            <span class="text-emerald-400 font-bold">2026 级就绪</span>
-                        </div>
-                        <div class="flex justify-between items-center text-neutral-300 py-1">
-                            <span class="text-neutral-500">// 02 官方技能认证</span>
-                            <span class="text-white font-bold">18 项证书已就绪</span>
-                        </div>
-                        <div class="flex justify-between items-center text-neutral-300 py-1">
-                            <span class="text-neutral-500">// 03 核心研发框架</span>
-                            <span class="text-cyan-400 font-bold">Vibe Coding MVP</span>
                         </div>
                     </div>
 
@@ -501,8 +482,8 @@
 
 
     <!-- ===================== 02 教育背景 · 专业技能 · 兴趣爱好 ===================== -->
-    <section id="profile" class="py-24 px-6 border-t border-white/5">
-        <div class="max-w-7xl mx-auto space-y-12">
+    <section id="profile" class="py-40 px-6 border-t border-white/5">
+        <div class="max-w-7xl mx-auto space-y-24">
             <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
                 <div>
                     <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 02 技能与档案</span>
@@ -515,7 +496,7 @@
                 </p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-6">
+            <div class="grid md:grid-cols-3 gap-10">
                 <!-- 教育背景 -->
                 <div class="p-8 rounded-3xl glass-card space-y-5 reveal-node">
                     <div class="flex items-center gap-3">
@@ -572,8 +553,8 @@
     </section>
 
     <!-- ===================== 02 权威官方证书集 (18项证书墙) ===================== -->
-    <section id="certs" class="py-24 px-6 border-t border-white/5">
-        <div class="max-w-7xl mx-auto space-y-12">
+    <section id="certs" class="py-40 px-6 border-t border-white/5">
+        <div class="max-w-7xl mx-auto space-y-24">
             <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
                 <div>
                     <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 03 官方证书集</span>
@@ -610,7 +591,7 @@
             </div>
 
             <!-- 精选代表性证书卡片 (点击进入 Lightbox) -->
-            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 reveal-node">
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 reveal-node">
                 <!-- 证书卡片 1 -->
                 <div onclick="openLightbox(0)" class="glass-card p-5 rounded-2xl space-y-3 cursor-pointer group hover:border-emerald-400">
                     <div class="flex items-center justify-between">
@@ -679,8 +660,8 @@
     </section>
 
     <!-- ===================== 03 重点项目实战 ===================== -->
-    <section id="projects" class="py-24 px-6 border-t border-white/5">
-        <div class="max-w-7xl mx-auto space-y-12">
+    <section id="projects" class="py-40 px-6 border-t border-white/5">
+        <div class="max-w-7xl mx-auto space-y-24">
             <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
                 <div>
                     <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 04 重点项目实战</span>
@@ -693,7 +674,7 @@
                 </p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-6">
+            <div class="grid md:grid-cols-3 gap-10">
                 <!-- 项目 1 -->
                 <div onclick="openProjectModal(0)" class="p-8 rounded-3xl glass-card space-y-5 cursor-pointer reveal-node group hover:border-emerald-400 transition-all">
                     <div class="flex items-center justify-between">
@@ -755,8 +736,8 @@
     </section>
 
     <!-- ===================== 04 视觉至上 · 全局目光追踪 ===================== -->
-    <section id="visual" class="py-24 px-6 border-t border-white/5 relative overflow-hidden">
-        <div class="max-w-7xl mx-auto text-center space-y-10">
+    <section id="visual" class="py-40 px-6 border-t border-white/5 relative overflow-hidden">
+        <div class="max-w-7xl mx-auto text-center space-y-16">
             <div class="space-y-3 reveal-node">
                 <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 05 视觉目光追踪</span>
                 <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase">
@@ -788,8 +769,8 @@
     </section>
 
     <!-- ===================== 05 AI 编程实战 (触碰白光渐变反转) ===================== -->
-    <section id="ai-practice" class="py-24 px-6 border-t border-white/5">
-        <div class="max-w-7xl mx-auto space-y-12">
+    <section id="ai-practice" class="py-40 px-6 border-t border-white/5">
+        <div class="max-w-7xl mx-auto space-y-24">
             <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4 reveal-node">
                 <div>
                     <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">// 06 AI 编程实战</span>
@@ -802,7 +783,7 @@
                 </p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-6">
+            <div class="grid md:grid-cols-3 gap-10">
                 <!-- 实战卡片 1 -->
                 <div onclick="triggerAiCardEffect(this)" class="p-8 rounded-3xl ai-sweep-card glass-card border border-white/10 cursor-pointer space-y-4 reveal-node group">
                     <div class="text-4xl font-black font-mono text-emerald-400">01</div>
@@ -846,7 +827,7 @@
     </section>
 
     <!-- ===================== 06 智能实验室 · 原型蓝图工坊 (嵌入 WebGL 丝绸紫流光着色器背景) ===================== -->
-    <section id="blueprint-lab" class="py-24 px-6 border-t border-white/5 relative overflow-hidden bg-[#05080c]">
+    <section id="blueprint-lab" class="py-40 px-6 border-t border-white/5 relative overflow-hidden">
         <!-- WebGL 丝绸紫流光光丝着色器背景 (平时隐藏，生成蓝图触发闪电时随雷击一同显现) -->
         <canvas id="lightpillar-canvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-0 transition-opacity duration-500"></canvas>
         <div class="absolute inset-0 bg-gradient-to-t from-[#030508] via-transparent to-[#030508] pointer-events-none"></div>
@@ -929,7 +910,7 @@
 
 
     <!-- ===================== 07 CONTACT ME 创意联系方式 (Jiejoe 风格) ===================== -->
-    <section id="contact" class="py-28 px-6 border-t border-white/5 relative overflow-hidden">
+    <section id="contact" class="py-44 px-6 border-t border-white/5 relative overflow-hidden">
         <div class="max-w-7xl mx-auto text-center space-y-16">
             <div class="relative inline-block select-none reveal-node">
                 <!-- CONTACT ME 大字体与交互挂载 -->
@@ -1947,7 +1928,7 @@
         })();
 
         // 14.8 全局涟漪水波交互背景（OGL · 移植自 React Bits RippleDistortion，纹理源为 hero-bg.jpg）：
-        // 光标划过 → 背景产生水波涟漪（笔刷 175 / 强度 0.3 / 涡流 1 / 环纹 2.25）；点击 → 大涟漪
+        // 平时整图呈黑白灰度；光标划过 → 涟漪扩散处恢复原始色彩并产生水波扭曲；点击 → 大涟漪
         (async function () {
             const mount = document.getElementById('ripple-bg');
             if (!mount) return;
@@ -1958,6 +1939,7 @@
                     OGL = await import('./ogl_src/index.js');
                 } catch (err) {
                     mount.style.background = 'url(hero-bg.jpg) center/cover no-repeat';
+                    mount.style.filter = 'grayscale(1)';
                     return;
                 }
             }
@@ -2093,7 +2075,7 @@
                 uDispersion: { value: 0 },
                 uGlint: { value: 0.12 },                  // 轻微高光闪烁
                 uTintAmount: { value: 0.08 },
-                uGrayscale: { value: 0 }
+                uGrayscale: { value: cfg.grayscale ? 1 : 0 }
             };
             const compositeMesh = new Mesh(gl, {
                 geometry: new Triangle(gl),
