@@ -399,24 +399,21 @@
     <!-- ===================== 01 HERO 首屏动态叙事区 ===================== -->
     <section id="about" class="min-h-screen pt-28 pb-16 flex items-center justify-center relative px-6 overflow-hidden">
         <div class="max-w-7xl mx-auto w-full grid lg:grid-cols-12 gap-12 items-center relative z-10">
-            <!-- 左侧核心叙事与打字机 -->
-            <div class="lg:col-span-7 space-y-6">
+            <!-- 左侧核心叙事与打字机（精简排版：留白优先，一眼三个信息点） -->
+            <div class="lg:col-span-7 space-y-8">
                 <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium reveal-node shadow-sm">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                     <span>🎓 电子科技大学成都学院 · 计算机科学与技术 (2026 级新生)</span>
                 </div>
 
                 <div class="space-y-3">
-                    <div class="text-emerald-400 font-mono text-xs tracking-[0.25em] font-bold uppercase reveal-node">
-                        // 计算机科学与技术 · 准大一学生
-                    </div>
                     <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-tight reveal-node drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)]">
                         AI 原生<br />
                         <span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-200 to-emerald-400">
                             全栈开发者 · 胡坤
                         </span>
                     </h1>
-                    
+
                     <!-- 动态打字机叙事栏 -->
                     <div class="h-8 flex items-center text-base sm:text-xl font-mono text-cyan-300">
                         <span class="text-emerald-400 mr-2 font-black">&gt;</span>
@@ -425,8 +422,8 @@
                     </div>
                 </div>
 
-                <p class="text-neutral-300 text-sm sm:text-base leading-relaxed max-w-xl reveal-node">
-                    以 AI 原生思维为研发引擎，深入探索大模型工具链、Python / Web 全栈编程与 Canvas 图形交互。拥有 <strong class="text-emerald-400 font-bold">18 项大模型与开发官方权威认证</strong>（阿里云·达摩院 × 14、科大讯飞 × 4），崇尚“先完成，再完美”的极客实践哲学。
+                <p class="text-neutral-400 text-sm sm:text-base max-w-xl reveal-node">
+                    阿里云·达摩院 × 14 · 科大讯飞 × 4 · <span class="text-emerald-400">先完成，再完美</span>
                 </p>
 
                 <!-- 行动按钮组 -->
@@ -439,14 +436,6 @@
                     <a href="#projects" class="px-5 py-3.5 rounded-xl glass-card text-neutral-200 hover:text-white transition-all text-sm flex items-center gap-2 hover:border-emerald-400">
                         <i class="fa-solid fa-code text-emerald-400"></i>
                         <span>探索精选重点项目</span>
-                    </a>
-
-                    <button onclick="copyContact('2700219829@qq.com', '电子邮箱', event)" class="px-4 py-3.5 rounded-xl glass-card text-neutral-300 hover:text-white transition-all text-sm flex items-center gap-2" title="点击复制邮箱">
-                        <i class="fa-solid fa-envelope text-emerald-400"></i>
-                    </button>
-
-                    <a href="https://github.com/fklnk" target="_blank" rel="noreferrer" class="p-3.5 rounded-xl glass-card text-neutral-300 hover:text-white transition-all" title="GitHub 个人主页">
-                        <i class="fa-brands fa-github text-lg"></i>
                     </a>
                 </div>
             </div>
@@ -2035,7 +2024,11 @@
                     float theta = amount * uSwirl * TAU;
                     vec2 push = vec2(sin(theta), cos(theta)) * amount * uStrength;
                     vec3 color = texture2D(uTexture, base + push).rgb;
-                    if (uGrayscale > 0.001) color = mix(color, vec3(dot(color, vec3(0.2126, 0.7152, 0.0722))), uGrayscale);
+                    // 灰度基调 + 涟漪显色：波纹经过的地方恢复原始色彩（光标即画笔）
+                    if (uGrayscale > 0.001) {
+                        float g = clamp(uGrayscale - amount * 2.5, 0.0, 1.0);
+                        color = mix(color, vec3(dot(color, vec3(0.2126, 0.7152, 0.0722))), g);
+                    }
                     if (uTintAmount > 0.001) color = mix(color, color * uTint * 1.9, clamp(amount * 1.6, 0.0, 1.0) * uTintAmount);
                     if (uGlint > 0.001) {
                         float ex = texture2D(uDisplacement, vUv + vec2(uTexel.x, 0.0)).r - texture2D(uDisplacement, vUv - vec2(uTexel.x, 0.0)).r;
