@@ -294,8 +294,6 @@
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #22c55e; }
     </style>
-    <!-- OGL WebGL 运行时：涟漪水波交互背景依赖（jsdelivr 国内可达；失败时页面自动回落普通视频背景） -->
-    <script src="https://cdn.jsdelivr.net/npm/ogl@1.0.11/build/ogl.umd.js"></script>
 </head>
 <body class="selection:bg-emerald-500 selection:text-black bg-[#020408]">
 
@@ -1950,12 +1948,18 @@
 
         // 14.8 全局涟漪水波交互背景（OGL · 移植自 React Bits RippleDistortion，纹理源为 hero-bg.jpg）：
         // 光标划过 → 背景产生水波涟漪（笔刷 175 / 强度 0.3 / 涡流 1 / 环纹 2.25）；点击 → 大涟漪
-        (function () {
+        (async function () {
             const mount = document.getElementById('ripple-bg');
-            if (!mount || !window.OGL) {
-                // OGL 加载失败兜底：直接以静态图铺满，保证背景永远有画面
-                mount.style.background = 'url(hero-bg.jpg) center/cover no-repeat';
-                return;
+            if (!mount) return;
+            // OGL 运行时：优先 CDN 全局，失败则动态加载本地 ogl_src 源码模块（完全离线可用）
+            let OGL = window.OGL;
+            if (!OGL) {
+                try {
+                    OGL = await import('./ogl_src/index.js');
+                } catch (err) {
+                    mount.style.background = 'url(hero-bg.jpg) center/cover no-repeat';
+                    return;
+                }
             }
             const { Renderer, Program, Mesh, Geometry, Triangle, Texture, RenderTarget } = OGL;
 
