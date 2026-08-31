@@ -92,8 +92,15 @@
         /* 文字可读性：卡片内所有文字加深色投影，在背景亮部依然清晰 */
         .glass-card,
         .cert-card {
-            text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.7);
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
         }
+        /* 卡片内灰色正文提亮（覆盖 Tailwind 灰阶，对抗亮背景冲淡） */
+        .glass-card .text-neutral-400,
+        .cert-card .text-neutral-400 { color: #dcdcdc !important; }
+        .glass-card .text-neutral-300,
+        .cert-card .text-neutral-300 { color: #f5f5f5 !important; }
+        .glass-card .text-neutral-500,
+        .cert-card .text-neutral-500 { color: #d0d0d0 !important; }
         @keyframes glass-fluid {
             0% { transform: translate(-8%, -6%) rotate(-2deg); }
             50% { transform: translate(10%, 8%) rotate(2deg); }
