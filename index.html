@@ -294,6 +294,8 @@
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #22c55e; }
     </style>
+    <!-- OGL WebGL 运行时：涟漪水波交互背景依赖 -->
+    <script src="https://unpkg.com/ogl@1.0.11/build/ogl.umd.js"></script>
 </head>
 <body class="selection:bg-emerald-500 selection:text-black bg-[#020408]">
 
@@ -381,10 +383,15 @@
         </div>
     </header>
 
-    <!-- ===================== 全局波纹扭曲交互背景 (RippleDistortion · 鼠标划过产生水波漩涡) ===================== -->
-    <div id="ripple-bg" class="fixed inset-0 z-0 pointer-events-none overflow-hidden"></div>
-    <!-- 四周暗角、中心通透：保证文字可读性的同时让玻璃卡片处处有光可折 -->
-    <div class="fixed inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_10%,#020408_95%)] opacity-95"></div>
+    <!-- ===================== 全局涟漪水波交互背景 (OGL WebGL · 视频纹理 + 光标涟漪) ===================== -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div id="ripple-bg" class="absolute inset-0"></div>
+        <!-- 四周暗角、中心通透：保证文字可读性的同时让玻璃卡片处处有光可折 -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#020408_95%)] opacity-95"></div>
+    </div>
+    <!-- 视频纹理源（隐藏；同时作为放大镜同步基准） -->
+    <video id="bg-video" class="absolute w-px h-px opacity-0 pointer-events-none" autoPlay muted loop playsInline preload="auto"
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_115001_bcdaa3b4-03de-47e7-ad63-ae3e392c32d4.mp4"></video>
 
     <!-- 紫色闪电雷击交互层 (默认完全透明，生成蓝图时触发 WebGL 雷电着色器) -->
     <canvas id="lightning-canvas" class="fixed inset-0 z-[1] pointer-events-none opacity-0 transition-opacity duration-1000 ease-out mix-blend-screen"></canvas>
@@ -1944,6 +1951,218 @@
             }, { passive: true });
         })();
 
+        // 14.8 全局涟漪水波交互背景（OGL · 移植自 React Bits RippleDistortion，纹理源为背景视频）：
+        // 光标划过 → 视频产生水波涟漪（笔刷 175 / 强度 0.3 / 涡流 1 / 环纹 2.25）；点击 → 大涟漪
+        (function () {
+            const mount = document.getElementById('ripple-bg');
+            const video = document.getElementById('bg-video');
+            if (!mount || !video || !window.OGL) return;
+            const { Renderer, Program, Mesh, Geometry, Triangle, Texture, RenderTarget } = OGL;
+
+            const MAX_WAVES = 100, START_SCALE = 1.5, LIFE_CONSTANT = Math.log(500);
+            const cfg = { brushSize: 175, strength: 0.3, swirl: 1, rings: 2.25, spread: 5, fade: 3, spacing: 10, clickStrength: 2, grayscale: false };
+
+            const renderer = new Renderer({ alpha: false, antialias: false, dpr: Math.min(window.devicePixelRatio || 1, 2) });
+            const gl = renderer.gl;
+            gl.clearColor(0, 0, 0, 1);
+            Object.assign(gl.canvas.style, { width: '100%', height: '100%', display: 'block' });
+            mount.appendChild(gl.canvas);
+
+            // 视频纹理源
+            const videoTexture = new Texture(gl, {
+                generateMipmaps: false, minFilter: gl.LINEAR, magFilter: gl.LINEAR,
+                wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE
+            });
+            const bindVideoTexture = () => {
+                videoTexture.image = video;
+                compositeUniforms.uTextureSize.value = [video.videoWidth || 1, video.videoHeight || 1];
+            };
+            // 视频可能在脚本执行前就已加载完毕，两种时序都要覆盖
+            if (video.readyState >= 2) bindVideoTexture();
+            else video.addEventListener('loadeddata', bindVideoTexture, { once: true });
+
+            const waveVertex = `
+                precision highp float;
+                attribute vec2 position; attribute vec2 uv;
+                attribute vec2 iOffset; attribute vec2 iScale; attribute float iOpacity;
+                varying vec2 vUv; varying float vOpacity;
+                void main() {
+                    vUv = uv; vOpacity = iOpacity;
+                    gl_Position = vec4(iOffset + position * iScale, 0.0, 1.0);
+                }`;
+            const waveFragment = `
+                precision highp float;
+                varying vec2 vUv; varying float vOpacity;
+                uniform float uRings;
+                const float PI = 3.141592653589793;
+                const float EDGE = 0.006737947;
+                void main() {
+                    vec2 p = vUv * 2.0 - 1.0;
+                    float r = dot(p, p);
+                    if (r > 1.0) discard;
+                    float brush = (exp(-r * 5.0) - EDGE) / (1.0 - EDGE);
+                    brush *= 0.55 + 0.45 * cos(sqrt(r) * PI * 2.0 * uRings);
+                    gl_FragColor = vec4(vec3(brush * vOpacity * vOpacity), 1.0);
+                }`;
+            const screenVertex = `
+                precision highp float;
+                attribute vec2 position; attribute vec2 uv; varying vec2 vUv;
+                void main() { vUv = uv; gl_Position = vec4(position, 0.0, 1.0); }`;
+            const compositeFragment = `
+                precision highp float;
+                varying vec2 vUv;
+                uniform sampler2D uTexture; uniform sampler2D uDisplacement;
+                uniform vec2 uResolution; uniform vec2 uTextureSize; uniform vec2 uTexel;
+                uniform vec3 uTint; uniform vec3 uHighlight;
+                uniform float uStrength; uniform float uSwirl; uniform float uDispersion;
+                uniform float uGlint; uniform float uTintAmount; uniform float uGrayscale;
+                const float TAU = 6.283185307179586;
+                vec2 coverUV(vec2 uv) {
+                    vec2 safe = max(uTextureSize, vec2(1.0));
+                    vec2 s = uResolution / safe;
+                    vec2 scaledSize = safe * max(s.x, s.y);
+                    vec2 offset = (uResolution - scaledSize) * 0.5;
+                    return (uv * uResolution - offset) / scaledSize;
+                }
+                void main() {
+                    float amount = texture2D(uDisplacement, vUv).r;
+                    vec2 base = coverUV(vUv);
+                    float theta = amount * uSwirl * TAU;
+                    vec2 push = vec2(sin(theta), cos(theta)) * amount * uStrength;
+                    vec3 color = texture2D(uTexture, base + push).rgb;
+                    if (uGrayscale > 0.001) color = mix(color, vec3(dot(color, vec3(0.2126, 0.7152, 0.0722))), uGrayscale);
+                    if (uTintAmount > 0.001) color = mix(color, color * uTint * 1.9, clamp(amount * 1.6, 0.0, 1.0) * uTintAmount);
+                    if (uGlint > 0.001) {
+                        float ex = texture2D(uDisplacement, vUv + vec2(uTexel.x, 0.0)).r - texture2D(uDisplacement, vUv - vec2(uTexel.x, 0.0)).r;
+                        float ey = texture2D(uDisplacement, vUv + vec2(0.0, uTexel.y)).r - texture2D(uDisplacement, vUv - vec2(0.0, uTexel.y)).r;
+                        vec3 normal = normalize(vec3(-ex * 26.0, -ey * 26.0, 1.0));
+                        vec3 light = normalize(vec3(-0.35, 0.55, 1.0));
+                        float raw = pow(max(dot(normal, light), 0.0), 22.0);
+                        float flatSpec = pow(max(light.z, 0.0), 22.0);
+                        color += uHighlight * clamp((raw - flatSpec) / max(1.0 - flatSpec, 0.0001), 0.0, 1.0) * uGlint;
+                    }
+                    gl_FragColor = vec4(color, 1.0);
+                }`;
+
+            // 波场实例池
+            const offsets = new Float32Array(MAX_WAVES * 2);
+            const scales = new Float32Array(MAX_WAVES * 2);
+            const opacities = new Float32Array(MAX_WAVES);
+            const waves = Array.from({ length: MAX_WAVES }, () => ({ x: 0, y: 0, scale: START_SCALE, target: START_SCALE, size: 1, opacity: 0 }));
+            let current = 0;
+
+            const geometry = new Geometry(gl, {
+                position: { size: 2, data: new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]) },
+                uv: { size: 2, data: new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]) },
+                iOffset: { instanced: 1, size: 2, data: offsets },
+                iScale: { instanced: 1, size: 2, data: scales },
+                iOpacity: { instanced: 1, size: 1, data: opacities }
+            });
+            const waveProgram = new Program(gl, {
+                vertex: waveVertex, fragment: waveFragment,
+                uniforms: { uRings: { value: cfg.rings } },
+                transparent: true, depthTest: false, depthWrite: false, cullFace: false
+            });
+            waveProgram.setBlendFunc(gl.ONE, gl.ONE);
+            const waveMesh = new Mesh(gl, { geometry, program: waveProgram, frustumCulled: false });
+
+            const displacementTarget = new RenderTarget(gl, {
+                width: 2, height: 2, depth: false,
+                minFilter: gl.LINEAR, magFilter: gl.LINEAR,
+                wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE
+            });
+            const compositeUniforms = {
+                uTexture: { value: videoTexture },
+                uDisplacement: { value: displacementTarget.texture },
+                uResolution: { value: [1, 1] },
+                uTextureSize: { value: [1, 1] },
+                uTexel: { value: [1, 1] },
+                uTint: { value: [0.2, 0.83, 0.6] },       // 翡翠绿 tint，贴合主题
+                uHighlight: { value: [1, 1, 1] },
+                uStrength: { value: cfg.strength },
+                uSwirl: { value: cfg.swirl },
+                uDispersion: { value: 0 },
+                uGlint: { value: 0.12 },                  // 轻微高光闪烁
+                uTintAmount: { value: 0.08 },
+                uGrayscale: { value: 0 }
+            };
+            const compositeMesh = new Mesh(gl, {
+                geometry: new Triangle(gl),
+                program: new Program(gl, { vertex: screenVertex, fragment: compositeFragment, uniforms: compositeUniforms, depthTest: false, depthWrite: false })
+            });
+
+            let width = 1, height = 1;
+            const resize = () => {
+                width = Math.max(1, mount.clientWidth);
+                height = Math.max(1, mount.clientHeight);
+                renderer.setSize(width, height);
+                compositeUniforms.uResolution.value = [width, height];
+                const fieldW = Math.max(2, Math.round(width * 0.4));  // quality: low，保性能
+                const fieldH = Math.max(2, Math.round(height * 0.4));
+                displacementTarget.setSize(fieldW, fieldH);
+                compositeUniforms.uTexel.value = [1 / fieldW, 1 / fieldH];
+            };
+            new ResizeObserver(resize).observe(mount);
+            resize();
+
+            const setNewWave = (x, y, power) => {
+                const wave = waves[current];
+                current = (current + 1) % MAX_WAVES;
+                wave.x = x; wave.y = y;
+                wave.scale = START_SCALE * power;
+                wave.target = START_SCALE * Math.max(1, cfg.spread) * power;
+                wave.size = Math.max(1, cfg.brushSize);
+                wave.opacity = 1;
+            };
+            const onMove = (e) => {
+                const r = mount.getBoundingClientRect();
+                if (!r.width || !r.height) return;
+                const x = e.clientX - r.left, y = r.height - (e.clientY - r.top);
+                if (Math.abs(x - prevX) > cfg.spacing || Math.abs(y - prevY) > cfg.spacing) {
+                    setNewWave(x, y, 1);
+                    prevX = x; prevY = y;
+                }
+            };
+            const onDown = (e) => {
+                const r = mount.getBoundingClientRect();
+                if (!r.width || !r.height) return;
+                setNewWave(e.clientX - r.left, r.height - (e.clientY - r.top), Math.max(1, cfg.clickStrength));
+            };
+            let prevX = 0, prevY = 0;
+            window.addEventListener('pointermove', onMove, { passive: true });
+            window.addEventListener('pointerdown', onDown, { passive: true });
+
+            let raf = 0, prevTime = 0;
+            const loop = (now) => {
+                raf = requestAnimationFrame(loop);
+                const delta = prevTime ? Math.min(0.05, (now - prevTime) / 1000) : 0;
+                prevTime = now;
+                const growth = 1 - Math.exp(-delta * 1.09);
+                const decay = Math.exp((-delta * LIFE_CONSTANT) / Math.max(0.15, cfg.fade));
+                for (let i = 0; i < MAX_WAVES; i++) {
+                    const w = waves[i];
+                    if (w.opacity <= 0) { opacities[i] = 0; continue; }
+                    w.opacity *= decay;
+                    w.scale += (w.target - w.scale) * growth;
+                    if (w.opacity < 0.002) { w.opacity = 0; opacities[i] = 0; continue; }
+                    const half = (w.scale * w.size) / 2;
+                    offsets[i * 2] = (w.x / width) * 2 - 1;
+                    offsets[i * 2 + 1] = (w.y / height) * 2 - 1;
+                    scales[i * 2] = (half / width) * 2;
+                    scales[i * 2 + 1] = (half / height) * 2;
+                    opacities[i] = w.opacity;
+                }
+                geometry.attributes.iOffset.needsUpdate = true;
+                geometry.attributes.iScale.needsUpdate = true;
+                geometry.attributes.iOpacity.needsUpdate = true;
+
+                videoTexture.update(); // 每帧上传视频帧
+                renderer.render({ scene: waveMesh, target: displacementTarget, clear: true });
+                renderer.render({ scene: compositeMesh });
+            };
+            raf = requestAnimationFrame(loop);
+        })();
+
         // 15. 背景音乐（Wake · 全页唯一实例；重复触发时新播放直接覆盖旧播放）
         let bgmPlayer = null;
         let isBgmPausedByUser = false;
@@ -2108,260 +2327,6 @@
             const menu = document.getElementById('mobile-menu');
             if (menu) menu.classList.toggle('hidden');
         }
-    </script>
-
-    <!-- 18. 全局波纹扭曲交互背景（移植自 React Bits RippleDistortion · ogl WebGL） -->
-    <script type="module">
-        import { Renderer, Program, Mesh, Geometry, Triangle, Texture, RenderTarget } from 'https://unpkg.com/ogl@1.0.11/build/ogl.module.js';
-
-        const MAX_WAVES = 100;
-        const QUALITY_SCALE = { low: 0.4, medium: 0.7, high: 1 };
-        const START_SCALE = 1.5;
-        const LIFE_CONSTANT = Math.log(500);
-
-        // 配置（React Bits 规格参数）
-        const CFG = {
-            src: 'https://images.unsplash.com/photo-1782977389500-dd7adad33ebe?q=80&w=3416&auto=format&fit=crop',
-            brushSize: 175, strength: 0.3, swirl: 1, rings: 2.25,
-            spread: 5, fade: 3, spacing: 10,
-            tint: [0.13, 0.77, 0.37], tintAmount: 0.12,   // 主题翡翠绿
-            grayscale: 1, glint: 0.3, quality: 'medium'
-        };
-
-        const waveVertex = `
-precision highp float;
-attribute vec2 position;
-attribute vec2 uv;
-attribute vec2 iOffset;
-attribute vec2 iScale;
-attribute float iOpacity;
-varying vec2 vUv;
-varying float vOpacity;
-void main() {
-  vUv = uv;
-  vOpacity = iOpacity;
-  gl_Position = vec4(iOffset + position * iScale, 0.0, 1.0);
-}`;
-
-        const waveFragment = `
-precision highp float;
-varying vec2 vUv;
-varying float vOpacity;
-uniform float uRings;
-const float PI = 3.141592653589793;
-const float EDGE = 0.006737947;
-void main() {
-  vec2 p = vUv * 2.0 - 1.0;
-  float r = dot(p, p);
-  if (r > 1.0) discard;
-  float brush = (exp(-r * 5.0) - EDGE) / (1.0 - EDGE);
-  brush *= 0.55 + 0.45 * cos(sqrt(r) * PI * 2.0 * uRings);
-  gl_FragColor = vec4(vec3(brush * vOpacity * vOpacity), 1.0);
-}`;
-
-        const screenVertex = `
-precision highp float;
-attribute vec2 position;
-attribute vec2 uv;
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position, 0.0, 1.0);
-}`;
-
-        const compositeFragment = `
-precision highp float;
-varying vec2 vUv;
-uniform sampler2D uTexture;
-uniform sampler2D uDisplacement;
-uniform vec2 uResolution;
-uniform vec2 uTextureSize;
-uniform vec2 uTexel;
-uniform vec3 uTint;
-uniform vec3 uHighlight;
-uniform float uStrength;
-uniform float uSwirl;
-uniform float uDispersion;
-uniform float uGlint;
-uniform float uTintAmount;
-uniform float uGrayscale;
-const float TAU = 6.283185307179586;
-
-vec2 coverUV(vec2 uv) {
-  vec2 safe = max(uTextureSize, vec2(1.0));
-  vec2 s = uResolution / safe;
-  vec2 scaledSize = safe * max(s.x, s.y);
-  vec2 offset = (uResolution - scaledSize) * 0.5;
-  return (uv * uResolution - offset) / scaledSize;
-}
-
-void main() {
-  float amount = texture2D(uDisplacement, vUv).r;
-  vec2 base = coverUV(vUv);
-  float theta = amount * uSwirl * TAU;
-  vec2 dir = vec2(sin(theta), cos(theta));
-  vec2 push = dir * amount * uStrength;
-
-  vec3 color;
-  float split = uDispersion * 0.25;
-  color.r = texture2D(uTexture, base + push * (1.0 + split)).r;
-  color.g = texture2D(uTexture, base + push).g;
-  color.b = texture2D(uTexture, base + push * (1.0 - split)).b;
-
-  if (uGrayscale > 0.001) {
-    color = mix(color, vec3(dot(color, vec3(0.2126, 0.7152, 0.0722))), uGrayscale);
-  }
-  if (uTintAmount > 0.001) {
-    color = mix(color, color * uTint * 1.9, clamp(amount * 1.6, 0.0, 1.0) * uTintAmount);
-  }
-  if (uGlint > 0.001) {
-    float ex = texture2D(uDisplacement, vUv + vec2(uTexel.x, 0.0)).r - texture2D(uDisplacement, vUv - vec2(uTexel.x, 0.0)).r;
-    float ey = texture2D(uDisplacement, vUv + vec2(0.0, uTexel.y)).r - texture2D(uDisplacement, vUv - vec2(0.0, uTexel.y)).r;
-    vec3 normal = normalize(vec3(-ex * 26.0, -ey * 26.0, 1.0));
-    vec3 light = normalize(vec3(-0.35, 0.55, 1.0));
-    float raw = pow(max(dot(normal, light), 0.0), 22.0);
-    float flatSpec = pow(max(light.z, 0.0), 22.0);
-    color += uHighlight * clamp((raw - flatSpec) / max(1.0 - flatSpec, 0.0001), 0.0, 1.0) * uGlint;
-  }
-  gl_FragColor = vec4(color, 1.0);
-}`;
-
-        const mount = document.getElementById('ripple-bg');
-        const renderer = new Renderer({ alpha: false, antialias: false, dpr: Math.min(window.devicePixelRatio || 1, 2) });
-        const gl = renderer.gl;
-        gl.clearColor(0, 0, 0, 1);
-        gl.canvas.style.width = '100%';
-        gl.canvas.style.height = '100%';
-        gl.canvas.style.display = 'block';
-        mount.appendChild(gl.canvas);
-
-        const imageTexture = new Texture(gl, {
-            generateMipmaps: false, minFilter: gl.LINEAR, magFilter: gl.LINEAR,
-            wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE
-        });
-        const image = new Image();
-        image.crossOrigin = 'anonymous';
-        image.onload = () => { imageTexture.image = image; uTexSize.value = [image.naturalWidth || 1, image.naturalHeight || 1]; };
-        image.src = CFG.src;
-
-        const offsets = new Float32Array(MAX_WAVES * 2);
-        const scales = new Float32Array(MAX_WAVES * 2);
-        const opacities = new Float32Array(MAX_WAVES);
-        const waves = Array.from({ length: MAX_WAVES }, () => ({ x: 0, y: 0, scale: START_SCALE, target: START_SCALE, size: 1, opacity: 0 }));
-        let current = 0;
-
-        const geometry = new Geometry(gl, {
-            position: { size: 2, data: new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]) },
-            uv: { size: 2, data: new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]) },
-            iOffset: { instanced: 1, size: 2, data: offsets },
-            iScale: { instanced: 1, size: 2, data: scales },
-            iOpacity: { instanced: 1, size: 1, data: opacities }
-        });
-
-        const uRings = { value: CFG.rings };
-        const waveProgram = new Program(gl, {
-            vertex: waveVertex, fragment: waveFragment, uniforms: { uRings },
-            transparent: true, depthTest: false, depthWrite: false, cullFace: false
-        });
-        waveProgram.setBlendFunc(gl.ONE, gl.ONE);
-
-        const displacementTarget = new RenderTarget(gl, {
-            width: 2, height: 2, depth: false,
-            minFilter: gl.LINEAR, magFilter: gl.LINEAR,
-            wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE
-        });
-
-        const uTexSize = { value: [1, 1] };
-        const compositeUniforms = {
-            uTexture: { value: imageTexture },
-            uDisplacement: { value: displacementTarget.texture },
-            uResolution: { value: [1, 1] },
-            uTextureSize: uTexSize,
-            uTexel: { value: [1, 1] },
-            uTint: { value: CFG.tint },
-            uHighlight: { value: [1, 1, 1] },
-            uStrength: { value: CFG.strength },
-            uSwirl: { value: CFG.swirl },
-            uDispersion: { value: 0 },
-            uGlint: { value: CFG.glint },
-            uTintAmount: { value: CFG.tintAmount },
-            uGrayscale: { value: CFG.grayscale }
-        };
-
-        const compositeMesh = new Mesh(gl, {
-            geometry: new Triangle(gl),
-            program: new Program(gl, { vertex: screenVertex, fragment: compositeFragment, uniforms: compositeUniforms, depthTest: false, depthWrite: false })
-        });
-
-        let width = 1, height = 1;
-        const resize = () => {
-            width = Math.max(1, mount.clientWidth);
-            height = Math.max(1, mount.clientHeight);
-            renderer.setSize(width, height);
-            compositeUniforms.uResolution.value = [width, height];
-            const scale = QUALITY_SCALE[CFG.quality] || QUALITY_SCALE.high;
-            const fieldW = Math.max(2, Math.round(width * scale));
-            const fieldH = Math.max(2, Math.round(height * scale));
-            displacementTarget.setSize(fieldW, fieldH);
-            compositeUniforms.uTexel.value = [1 / fieldW, 1 / fieldH];
-        };
-        new ResizeObserver(resize).observe(mount);
-        resize();
-
-        const setNewWave = (x, y, power) => {
-            const wave = waves[current];
-            current = (current + 1) % MAX_WAVES;
-            wave.x = x; wave.y = y;
-            wave.scale = START_SCALE * power;
-            wave.target = START_SCALE * Math.max(1, CFG.spread) * power;
-            wave.size = Math.max(1, CFG.brushSize);
-            wave.opacity = 1;
-        };
-
-        let previousX = 0, previousY = 0;
-        window.addEventListener('pointermove', (event) => {
-            const rect = mount.getBoundingClientRect();
-            const px = event.clientX - rect.left, py = rect.height - (event.clientY - rect.top);
-            if (Math.abs(px - previousX) > CFG.spacing || Math.abs(py - previousY) > CFG.spacing) {
-                setNewWave(px, py, 1);
-                previousX = px; previousY = py;
-            }
-        }, { passive: true });
-        window.addEventListener('pointerdown', (event) => {
-            const rect = mount.getBoundingClientRect();
-            setNewWave(event.clientX - rect.left, rect.height - (event.clientY - rect.top), 2);
-        }, { passive: true });
-
-        let raf = 0, previousTime = 0;
-        const loop = (now) => {
-            raf = requestAnimationFrame(loop);
-            const delta = previousTime ? Math.min(0.05, (now - previousTime) / 1000) : 0;
-            previousTime = now;
-            const growth = 1 - Math.exp(-delta * 1.09);
-            const decay = Math.exp((-delta * LIFE_CONSTANT) / Math.max(0.15, CFG.fade));
-
-            for (let i = 0; i < MAX_WAVES; i++) {
-                const wave = waves[i];
-                if (wave.opacity <= 0) { opacities[i] = 0; continue; }
-                wave.opacity *= decay;
-                wave.scale += (wave.target - wave.scale) * growth;
-                if (wave.opacity < 0.002) { wave.opacity = 0; opacities[i] = 0; continue; }
-                const half = (wave.scale * wave.size) / 2;
-                offsets[i * 2] = (wave.x / width) * 2 - 1;
-                offsets[i * 2 + 1] = (wave.y / height) * 2 - 1;
-                scales[i * 2] = (half / width) * 2;
-                scales[i * 2 + 1] = (half / height) * 2;
-                opacities[i] = wave.opacity;
-            }
-            geometry.attributes.iOffset.needsUpdate = true;
-            geometry.attributes.iScale.needsUpdate = true;
-            geometry.attributes.iOpacity.needsUpdate = true;
-
-            renderer.render({ scene: waveMesh, target: displacementTarget, clear: true });
-            renderer.render({ scene: compositeMesh });
-        };
-        const waveMesh = new Mesh(gl, { geometry, program: waveProgram, frustumCulled: false });
-        raf = requestAnimationFrame(loop);
     </script>
 </body>
 </html>
