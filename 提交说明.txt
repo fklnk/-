@@ -36,6 +36,8 @@ HTML5 + Tailwind CSS + 原生 JavaScript + Canvas 2D/WebGL + Font Awesome 6
 六、压缩包内容清单
 index.html                     简历主页面（含全部样式与脚本）
 hero-bg.jpg                    涟漪交互背景图
+AI1.png ~ AI3.png              AI 编程实战卡片悬停展示图
+ogl_src/                       OGL WebGL 运行时（涟漪背景依赖，离线可用）
 README.md                      项目说明文档
 cert-01.png ~ cert-18.png      18 项官方认证证书原图
 Hillsong Young & Free - Wake (Studio).mp3  背景音乐
