@@ -294,8 +294,8 @@
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #22c55e; }
     </style>
-    <!-- OGL WebGL 运行时：涟漪水波交互背景依赖 -->
-    <script src="https://unpkg.com/ogl@1.0.11/build/ogl.umd.js"></script>
+    <!-- OGL WebGL 运行时：涟漪水波交互背景依赖（jsdelivr 国内可达；失败时页面自动回落普通视频背景） -->
+    <script src="https://cdn.jsdelivr.net/npm/ogl@1.0.11/build/ogl.umd.js"></script>
 </head>
 <body class="selection:bg-emerald-500 selection:text-black bg-[#020408]">
 
@@ -383,15 +383,12 @@
         </div>
     </header>
 
-    <!-- ===================== 全局涟漪水波交互背景 (OGL WebGL · 视频纹理 + 光标涟漪) ===================== -->
+    <!-- ===================== 全局涟漪水波交互背景 (OGL WebGL · hero 图纹理 + 光标涟漪) ===================== -->
     <div class="fixed inset-0 z-0 pointer-events-none">
         <div id="ripple-bg" class="absolute inset-0"></div>
         <!-- 四周暗角、中心通透：保证文字可读性的同时让玻璃卡片处处有光可折 -->
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#020408_95%)] opacity-95"></div>
     </div>
-    <!-- 视频纹理源（隐藏；同时作为放大镜同步基准） -->
-    <video id="bg-video" class="absolute w-px h-px opacity-0 pointer-events-none" autoPlay muted loop playsInline preload="auto"
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_115001_bcdaa3b4-03de-47e7-ad63-ae3e392c32d4.mp4"></video>
 
     <!-- 紫色闪电雷击交互层 (默认完全透明，生成蓝图时触发 WebGL 雷电着色器) -->
     <canvas id="lightning-canvas" class="fixed inset-0 z-[1] pointer-events-none opacity-0 transition-opacity duration-1000 ease-out mix-blend-screen"></canvas>
@@ -1951,12 +1948,15 @@
             }, { passive: true });
         })();
 
-        // 14.8 全局涟漪水波交互背景（OGL · 移植自 React Bits RippleDistortion，纹理源为背景视频）：
-        // 光标划过 → 视频产生水波涟漪（笔刷 175 / 强度 0.3 / 涡流 1 / 环纹 2.25）；点击 → 大涟漪
+        // 14.8 全局涟漪水波交互背景（OGL · 移植自 React Bits RippleDistortion，纹理源为 hero.jpg）：
+        // 光标划过 → 背景产生水波涟漪（笔刷 175 / 强度 0.3 / 涡流 1 / 环纹 2.25）；点击 → 大涟漪
         (function () {
             const mount = document.getElementById('ripple-bg');
-            const video = document.getElementById('bg-video');
-            if (!mount || !video || !window.OGL) return;
+            if (!mount || !window.OGL) {
+                // OGL 加载失败兜底：直接以静态图铺满，保证背景永远有画面
+                mount.style.background = 'url(hero.jpg) center/cover no-repeat';
+                return;
+            }
             const { Renderer, Program, Mesh, Geometry, Triangle, Texture, RenderTarget } = OGL;
 
             const MAX_WAVES = 100, START_SCALE = 1.5, LIFE_CONSTANT = Math.log(500);
@@ -1968,18 +1968,19 @@
             Object.assign(gl.canvas.style, { width: '100%', height: '100%', display: 'block' });
             mount.appendChild(gl.canvas);
 
-            // 视频纹理源
-            const videoTexture = new Texture(gl, {
+            // 图片纹理源
+            const imageTexture = new Texture(gl, {
                 generateMipmaps: false, minFilter: gl.LINEAR, magFilter: gl.LINEAR,
                 wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE
             });
-            const bindVideoTexture = () => {
-                videoTexture.image = video;
-                compositeUniforms.uTextureSize.value = [video.videoWidth || 1, video.videoHeight || 1];
+            const image = new window.Image();
+            image.crossOrigin = 'anonymous';
+            image.decoding = 'async';
+            image.onload = () => {
+                imageTexture.image = image;
+                compositeUniforms.uTextureSize.value = [image.naturalWidth || 1, image.naturalHeight || 1];
             };
-            // 视频可能在脚本执行前就已加载完毕，两种时序都要覆盖
-            if (video.readyState >= 2) bindVideoTexture();
-            else video.addEventListener('loadeddata', bindVideoTexture, { once: true });
+            image.src = 'hero.jpg';
 
             const waveVertex = `
                 precision highp float;
@@ -2072,7 +2073,7 @@
                 wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE
             });
             const compositeUniforms = {
-                uTexture: { value: videoTexture },
+                uTexture: { value: imageTexture },
                 uDisplacement: { value: displacementTarget.texture },
                 uResolution: { value: [1, 1] },
                 uTextureSize: { value: [1, 1] },
@@ -2156,7 +2157,6 @@
                 geometry.attributes.iScale.needsUpdate = true;
                 geometry.attributes.iOpacity.needsUpdate = true;
 
-                videoTexture.update(); // 每帧上传视频帧
                 renderer.render({ scene: waveMesh, target: displacementTarget, clear: true });
                 renderer.render({ scene: compositeMesh });
             };
