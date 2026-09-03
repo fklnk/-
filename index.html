@@ -39,6 +39,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     
     <style>
+        /* 性能：屏幕外板块跳过渲染（含占位高度，滚动条稳定），任何时刻只渲染眼前内容 */
+        section {
+            content-visibility: auto;
+            contain-intrinsic-size: auto 900px;
+        }
         /* 基础暗黑质感与重置 */
         body {
             background-color: #030508;
@@ -87,6 +92,10 @@
                 linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.07) 50%, transparent 60%);
             pointer-events: none;
             z-index: -1;
+            /* 液态漂移仅在悬停时播放：空闲零动画开销（性能优先） */
+        }
+        .glass-card:hover::after,
+        .cert-card:hover::after {
             animation: glass-fluid 6s ease-in-out infinite alternate;
         }
         /* 文字可读性：卡片内所有文字加深色投影，在背景亮部依然清晰 */
