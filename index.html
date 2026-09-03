@@ -1944,15 +1944,24 @@
         })();
 
         // 14.9 液态玻璃边缘光标折射（光标靠近边框 → 边缘局部变色增亮）+ 卡片内容以光标为锚点的放大镜
+        // 性能：矩形缓存化（滚动/缩放时才刷新），杜绝每帧强制重排；无变化的样式写入直接跳过
         (function () {
             const cards = Array.from(document.querySelectorAll('.glass-card, .cert-card'));
             if (!cards.length) return;
             const NEAR = 90; // 边框感应半径（px）
             let pending = null;
+            let rects = cards.map(c => c.getBoundingClientRect());
+            const refreshRects = () => { rects = cards.map(c => c.getBoundingClientRect()); };
+            let rectStale = 0;
+            const markStale = () => {
+                if (!rectStale) rectStale = requestAnimationFrame(() => { rectStale = 0; refreshRects(); });
+            };
+            window.addEventListener('scroll', markStale, { passive: true });
+            window.addEventListener('resize', markStale, { passive: true });
             function update(clientX, clientY) {
                 pending = null;
-                cards.forEach(card => {
-                    const r = card.getBoundingClientRect();
+                cards.forEach((card, idx) => {
+                    const r = rects[idx];
                     // 光标到卡片矩形边缘的最近距离（光标在卡片内部时距离为 0）
                     const dx = Math.max(r.left - clientX, 0, clientX - r.right);
                     const dy = Math.max(r.top - clientY, 0, clientY - r.bottom);
@@ -1960,9 +1969,11 @@
                     if (dist <= NEAR) {
                         card.style.setProperty('--mx', (((clientX - r.left) / r.width) * 100).toFixed(2) + '%');
                         card.style.setProperty('--my', (((clientY - r.top) / r.height) * 100).toFixed(2) + '%');
-                        card.style.setProperty('--edge-o', (1 - dist / NEAR).toFixed(3));
-                    } else {
+                        const o = (1 - dist / NEAR).toFixed(3);
+                        if (card._edgeO !== o) { card.style.setProperty('--edge-o', o); card._edgeO = o; }
+                    } else if (card._edgeO !== '0') {
                         card.style.setProperty('--edge-o', '0');
+                        card._edgeO = '0';
                     }
                 });
             }
