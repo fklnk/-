@@ -2230,9 +2230,11 @@
             wakeLoop(); // 首帧渲染（此后空闲即停，交互唤醒）
         })();
 
-        // 15. 背景音乐（Wake · 全页唯一实例；重复触发时新播放直接覆盖旧播放）
+        // 15. 背景音乐（Wake · 全页唯一实例）
+        // 自动播放策略：静音起播（浏览器允许）→ 首次点按任意处解除静音出声——保证"打开即播放"
         let bgmPlayer = null;
         let isBgmPausedByUser = false;
+        let justUnmuted = false; // 解除静音的那次点击交给 toggleBgm 时跳过，避免"出声即被暂停"
 
         function getBgm() {
             if (!bgmPlayer) {
@@ -2255,11 +2257,13 @@
                 player.pause();
                 player.currentTime = 0;
             }
+            player.muted = false; // 用户主动播放：出声
             isBgmPausedByUser = false;
             player.play().then(() => setBgmUi(true)).catch(() => showToast('⚠️ 音乐加载失败，请点击右上角按钮重试'));
         }
 
         function toggleBgm() {
+            if (justUnmuted) { justUnmuted = false; return; } // 刚解除静音的这次点击忽略
             const player = getBgm();
             if (!player.paused) {
                 player.pause();
@@ -2270,21 +2274,31 @@
             playBgm();
         }
 
-        // 页面加载后尝试自动播放；同时预挂"首次交互自动续播"兜底（单次触发即销毁，不会叠音）
+        // 页面加载：静音自动播放（必然成功）→ 首次点按任意处解除静音出声
         window.addEventListener('load', () => {
-            const startOnGesture = (e) => {
-                document.removeEventListener('pointerdown', startOnGesture);
-                document.removeEventListener('touchstart', startOnGesture);
-                const player = getBgm();
-                // 自动播放真正出了声（currentTime > 0）才不打断；被拦截/悬挂时直接用手势覆盖播放
-                if (!player.paused && player.currentTime > 0) return;
-                if (isBgmPausedByUser) return;            // 用户手动暂停过，不强推
-                if (e.target.closest('#bgm-btn')) return; // 点的是音乐按钮本身，交给 toggleBgm，避免开了又被关
-                playBgm();
+            const bgm = getBgm();
+            bgm.muted = true;
+            bgm.play().then(() => {
+                setBgmUi(true);
+                showToast('🎵 背景音乐自动播放中 · 首次点按解除静音');
+            }).catch(() => showToast('🎵 点击页面任意位置开启背景音乐'));
+
+            const onFirstGesture = (e) => {
+                document.removeEventListener('pointerdown', onFirstGesture);
+                document.removeEventListener('touchstart', onFirstGesture);
+                if (isBgmPausedByUser) return;
+                const onBtn = e.target && e.target.closest && e.target.closest('#bgm-btn');
+                if (!bgm.paused) {
+                    // 静音起播成功 → 解除静音；若点的是按钮本体，忽略该次点击避免"出声即暂停"
+                    bgm.muted = false;
+                    if (onBtn) justUnmuted = true;
+                    setBgmUi(true);
+                } else if (!onBtn) {
+                    playBgm(); // 静音也被拦截的极端浏览器：用手势直接出声
+                }
             };
-            document.addEventListener('pointerdown', startOnGesture);
-            document.addEventListener('touchstart', startOnGesture);
-            getBgm().play().then(() => setBgmUi(true)).catch(() => showToast('🎵 点击页面任意位置开启背景音乐'));
+            document.addEventListener('pointerdown', onFirstGesture);
+            document.addEventListener('touchstart', onFirstGesture);
         });
 
         // 15.5 顶部导航响应式切换（桌面横排 / 移动端横滑，JS 显式控制确保二选一）
