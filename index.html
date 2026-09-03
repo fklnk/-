@@ -1319,16 +1319,6 @@
                 pop.classList.remove('ai-pop-anim');
             };
 
-            // 弹出位置：横向贴住卡片范围，纵向最高只到卡片上缘（钳制，不再越界盖住章节标题）
-            const placePop = (card, e) => {
-                const r = card.getBoundingClientRect();
-                const w = pop.offsetWidth || 256, h = pop.offsetHeight || 170;
-                const left = Math.min(Math.max(e.clientX - 48, r.left + 8), r.right - w - 8);
-                const top = Math.max(e.clientY - h - 24, r.top - 20);
-                pop.style.left = Math.max(8, left) + 'px';
-                pop.style.top = Math.max(8, top) + 'px';
-            };
-
             cards.forEach((card, idx) => {
                 card.addEventListener('mouseenter', (e) => {
                     card.classList.add('active-sweep');
@@ -1338,14 +1328,12 @@
                     Promise.resolve(readyImgs[src]).then(() => {
                         if (seq !== hoverSeq) return; // 光标已移走：这张图作废，不显示
                         pop.src = src;
+                        pop.style.left = (e.clientX - 48) + 'px';
+                        pop.style.top = (e.clientY - 230) + 'px';
                         pop.classList.remove('hidden', 'ai-pop-anim');
                         void pop.offsetWidth; // 重置动画
-                        placePop(card, e);
                         pop.classList.add('ai-pop-anim');
                     });
-                });
-                card.addEventListener('mousemove', (e) => {
-                    if (!pop.classList.contains('hidden')) placePop(card, e); // 图随光标，但不越出卡片
                 });
                 card.addEventListener('mouseleave', () => {
                     card._sweepTimer = setTimeout(() => {
