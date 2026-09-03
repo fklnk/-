@@ -47,7 +47,7 @@ python -m http.server 8000
 ├── ogl.bundle.js           # OGL WebGL 运行时（涟漪背景依赖）
 ├── AI1.png ~ AI3.png       # AI 编程实战卡片悬停展示图
 ├── cert-01 ~ 18.png        # 18 项官方认证证书原图
-├── Hillsong Young & Free - Wake (Studio).mp3  # 背景音乐
+├── bgm.mp3                 # 背景音乐
 └── README.md
 ```
 

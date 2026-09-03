@@ -1303,25 +1303,51 @@
             const cards = document.querySelectorAll('.ai-sweep-card');
             if (!pop || !cards.length) return;
             const AI_IMGS = ['AI1.png', 'AI2.png', 'AI3.png']; // 与卡片 01/02/03 顺序对应
+
+            // 预加载并解码三张图：首次悬停即完整显示（否则浏览器悬停时才加载，会出现空白/迟显）
+            AI_IMGS.forEach(src => { const im = new Image(); im.src = src; });
+
+            const hidePop = () => {
+                pop.classList.add('hidden');
+                pop.classList.remove('ai-pop-anim');
+            };
+
+            // 弹出位置：横向贴住卡片范围，纵向最高只到卡片上缘（钳制，不再越界盖住章节标题）
+            const placePop = (card, e) => {
+                const r = card.getBoundingClientRect();
+                const w = pop.offsetWidth || 256, h = pop.offsetHeight || 170;
+                const left = Math.min(Math.max(e.clientX - 48, r.left + 8), r.right - w - 8);
+                const top = Math.max(e.clientY - h - 24, r.top - 20);
+                pop.style.left = Math.max(8, left) + 'px';
+                pop.style.top = Math.max(8, top) + 'px';
+            };
+
             cards.forEach((card, idx) => {
                 card.addEventListener('mouseenter', (e) => {
                     card.classList.add('active-sweep');
                     clearTimeout(card._sweepTimer);
                     pop.src = AI_IMGS[idx] || 'AI1.png';
-                    pop.style.left = (e.clientX - 48) + 'px';
-                    pop.style.top = (e.clientY - 230) + 'px';
                     pop.classList.remove('hidden', 'ai-pop-anim');
                     void pop.offsetWidth; // 重置动画
+                    placePop(card, e);
                     pop.classList.add('ai-pop-anim');
+                });
+                card.addEventListener('mousemove', (e) => {
+                    if (!pop.classList.contains('hidden')) placePop(card, e); // 图随光标，但不越出卡片
                 });
                 card.addEventListener('mouseleave', () => {
                     card._sweepTimer = setTimeout(() => {
                         if (!card.matches(':hover')) card.classList.remove('active-sweep');
                     }, 150);
-                    pop.classList.add('hidden');
-                    pop.classList.remove('ai-pop-anim');
+                    hidePop();
                 });
             });
+
+            // 移动端触摸/页面滚动没有稳定的 mouseleave：滚动或触摸非卡片区域时收起弹图
+            window.addEventListener('scroll', hidePop, { passive: true });
+            document.addEventListener('touchstart', (e) => {
+                if (!(e.target && e.target.closest && e.target.closest('.ai-sweep-card'))) hidePop();
+            }, { passive: true });
         })();
 
         // 9. Canvas Confetti 粒子礼花系统
@@ -2238,7 +2264,7 @@
 
         function getBgm() {
             if (!bgmPlayer) {
-                bgmPlayer = new Audio('Hillsong Young & Free - Wake (Studio).mp3');
+                bgmPlayer = new Audio('bgm.mp3');
                 bgmPlayer.loop = true;
                 bgmPlayer.volume = 0.55;
             }
@@ -2250,7 +2276,7 @@
             document.getElementById('bgm-text').textContent = playing ? '正在播放' : '背景音乐';
         }
 
-        function playBgm() {
+        function playBgm(retry = 0) {
             const player = getBgm();
             // 新播放覆盖旧播放：先停掉再从头开始，保证任何时刻只有一路音乐
             if (!player.paused) {
@@ -2259,7 +2285,11 @@
             }
             player.muted = false; // 用户主动播放：出声
             isBgmPausedByUser = false;
-            player.play().then(() => setBgmUi(true)).catch(() => showToast('⚠️ 音乐加载失败，请点击右上角按钮重试'));
+            player.play().then(() => setBgmUi(true)).catch(() => {
+                // 大文件在慢网络下首载可能失败：自动重试两次
+                if (retry < 2) setTimeout(() => playBgm(retry + 1), 1200);
+                else showToast('⚠️ 音乐加载失败，请点击右上角按钮重试');
+            });
         }
 
         function toggleBgm() {
