@@ -406,7 +406,8 @@
 
     <!-- ===================== 全局涟漪水波交互背景 (OGL WebGL · hero 图纹理 + 光标涟漪) ===================== -->
     <div class="fixed inset-0 z-0 pointer-events-none">
-        <div id="ripple-bg" class="absolute inset-0"></div>
+        <!-- 背景图内联即显（零等待），OGL 画布就绪后在其上接管涟漪 -->
+        <div id="ripple-bg" class="absolute inset-0" style="background:url(hero-bg.jpg) center/cover no-repeat"></div>
         <!-- 四周暗角、中心通透 -->
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#020408_95%)] opacity-95"></div>
     </div>
@@ -2187,7 +2188,7 @@
                 wakeLoop();
             };
             const loop = (now) => {
-                raf = 0;
+                raf = requestAnimationFrame(loop); // 全速 60fps 链式渲染
                 const delta = prevTime ? Math.min(0.05, (now - prevTime) / 1000) : 0;
                 prevTime = now;
                 const growth = 1 - Math.exp(-delta * 1.09);
@@ -2214,11 +2215,11 @@
                 renderer.render({ scene: waveMesh, target: displacementTarget, clear: true });
                 renderer.render({ scene: compositeMesh });
 
-                if (activeCount > 0) {
-                    // 有活跃波纹：限 30fps 渲染（涟漪是柔焦水波，30fps 视觉无损）
-                    setTimeout(() => { raf = requestAnimationFrame(loop); }, 33);
+                if (activeCount === 0) {
+                    // 无活跃波纹：取消下一帧，完全停止（空闲 GPU 占用 ≈ 0），交互唤醒
+                    cancelAnimationFrame(raf);
+                    raf = 0;
                 }
-                // 无活跃波纹：渲染最终静止帧后完全停止（空闲 GPU 占用 ≈ 0）
             };
             window.addEventListener('pointermove', onMove, { passive: true });
             window.addEventListener('pointerdown', onDown, { passive: true });
