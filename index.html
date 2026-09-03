@@ -2324,7 +2324,21 @@
                 bgm.muted = true;
                 bgm.play().then(() => {
                     setBgmUi(true);
-                    showToast('🎵 背景音乐自动播放中 · 首次点按解除静音');
+                    showToast('🎵 背景音乐自动播放中');
+                    // 进阶尝试：自动播放政策只拦截带声音的 play() 调用，对"已在播放"的静音媒体
+                    // 直接解除静音在部分浏览器（Chrome 桌面版）可以出声 → 尽力做到"零点按默认播放"
+                    setTimeout(() => {
+                        if (isBgmPausedByUser) return;
+                        bgm.muted = false;
+                        setTimeout(() => {
+                            // 被浏览器拦回（强制暂停/恢复静音）：退回静音播放，等首次点按兜底
+                            if (bgm.paused || bgm.muted) {
+                                bgm.muted = true;
+                                if (bgm.paused) bgm.play().catch(() => {});
+                                showToast('🎵 点击页面任意位置开启声音');
+                            }
+                        }, 250);
+                    }, 700);
                 }).catch(() => {
                     playBgm(); // 静音也被拦截的极端浏览器：直接尝试起播（自带重试）
                     showToast('🎵 点击页面任意位置开启背景音乐');
@@ -2357,8 +2371,12 @@
                     playBgm(); // 静音也被拦截的极端浏览器：用手势直接出声
                 }
             };
-            document.addEventListener('pointerdown', onFirstGesture);
-            document.addEventListener('touchstart', onFirstGesture);
+            const bindGesture = () => {
+                document.addEventListener('pointerdown', onFirstGesture);
+                document.addEventListener('touchstart', onFirstGesture, { passive: true });
+                document.addEventListener('keydown', onFirstGesture);
+            };
+            bindGesture();
         });
 
         // 15.5 顶部导航响应式切换（桌面横排 / 移动端横滑，JS 显式控制确保二选一）
