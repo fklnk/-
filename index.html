@@ -1972,11 +1972,11 @@
         (async function () {
             const mount = document.getElementById('ripple-bg');
             if (!mount) return;
-            // OGL 运行时：优先 CDN 全局，失败则动态加载本地 ogl_src 源码模块（完全离线可用）
+            // OGL 运行时：加载本地打包单文件模块（一次请求秒加载；失败回落静态灰度图）
             let OGL = window.OGL;
             if (!OGL) {
                 try {
-                    OGL = await import('./ogl_src/index.js');
+                    OGL = await import('./ogl.bundle.js');
                 } catch (err) {
                     mount.style.background = 'url(hero-bg.jpg) center/cover no-repeat';
                     mount.style.filter = 'grayscale(1)';
@@ -2145,6 +2145,11 @@
                 wave.size = Math.max(1, cfg.brushSize);
                 wave.opacity = 1;
             };
+            let prevX = 0, prevY = 0;
+            let raf = 0, prevTime = 0;
+            const wakeLoop = () => {
+                if (!raf) { prevTime = 0; raf = requestAnimationFrame(loop); }
+            };
             const onMove = (e) => {
                 const r = mount.getBoundingClientRect();
                 if (!r.width || !r.height) return;
@@ -2153,29 +2158,28 @@
                     setNewWave(x, y, 1);
                     prevX = x; prevY = y;
                 }
+                wakeLoop();
             };
             const onDown = (e) => {
                 const r = mount.getBoundingClientRect();
                 if (!r.width || !r.height) return;
                 setNewWave(e.clientX - r.left, r.height - (e.clientY - r.top), Math.max(1, cfg.clickStrength));
+                wakeLoop();
             };
-            let prevX = 0, prevY = 0;
-            window.addEventListener('pointermove', onMove, { passive: true });
-            window.addEventListener('pointerdown', onDown, { passive: true });
-
-            let raf = 0, prevTime = 0;
             const loop = (now) => {
-                raf = requestAnimationFrame(loop);
+                raf = 0;
                 const delta = prevTime ? Math.min(0.05, (now - prevTime) / 1000) : 0;
                 prevTime = now;
                 const growth = 1 - Math.exp(-delta * 1.09);
                 const decay = Math.exp((-delta * LIFE_CONSTANT) / Math.max(0.15, cfg.fade));
+                let activeCount = 0;
                 for (let i = 0; i < MAX_WAVES; i++) {
                     const w = waves[i];
                     if (w.opacity <= 0) { opacities[i] = 0; continue; }
                     w.opacity *= decay;
                     w.scale += (w.target - w.scale) * growth;
                     if (w.opacity < 0.002) { w.opacity = 0; opacities[i] = 0; continue; }
+                    activeCount++;
                     const half = (w.scale * w.size) / 2;
                     offsets[i * 2] = (w.x / width) * 2 - 1;
                     offsets[i * 2 + 1] = (w.y / height) * 2 - 1;
@@ -2189,17 +2193,20 @@
 
                 renderer.render({ scene: waveMesh, target: displacementTarget, clear: true });
                 renderer.render({ scene: compositeMesh });
-            };
-            raf = requestAnimationFrame(loop);
-            // 标签页隐藏时暂停渲染，回来即恢复（省 GPU，帧率更稳）
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden) {
-                    if (raf) { cancelAnimationFrame(raf); raf = 0; }
-                } else if (!raf) {
-                    prevTime = 0;
-                    raf = requestAnimationFrame(loop);
+
+                if (activeCount > 0) {
+                    // 有活跃波纹：限 30fps 渲染（涟漪是柔焦水波，30fps 视觉无损）
+                    setTimeout(() => { raf = requestAnimationFrame(loop); }, 33);
                 }
+                // 无活跃波纹：渲染最终静止帧后完全停止（空闲 GPU 占用 ≈ 0）
+            };
+            window.addEventListener('pointermove', onMove, { passive: true });
+            window.addEventListener('pointerdown', onDown, { passive: true });
+            // 标签页隐藏时立即停止渲染
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && raf) { cancelAnimationFrame(raf); raf = 0; }
             });
+            wakeLoop(); // 首帧渲染（此后空闲即停，交互唤醒）
         })();
 
         // 15. 背景音乐（Wake · 全页唯一实例；重复触发时新播放直接覆盖旧播放）
